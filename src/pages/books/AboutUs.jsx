@@ -1,6 +1,9 @@
-import { Eye, GraduationCap, Lightbulb, Mail, MapPin, Phone, ShieldCheck, SquareLibrary } from 'lucide-react'
+import { Eye, GraduationCap, Lightbulb, ShieldCheck, SquareLibrary } from 'lucide-react'
 import heroImage from '@/assets/about-library-hero.png'
-import leadersImage from '@/assets/about-leaders.png'
+import leaderQuanImage from '@/assets/leader-quan.png'
+import leaderChiImage from '@/assets/leader-chi.png'
+import leaderNamImage from '@/assets/leader-nam.png'
+import leaderAnhImage from '@/assets/leader-anh.png'
 import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
 
@@ -20,16 +23,36 @@ const missionCards = [
 ]
 
 const coreValues = [
-  { icon: ShieldCheck, title: 'Tin cậy', description: 'Thông tin được xác thực bởi các chuyên gia hàng đầu và các tổ chức học thuật uy tín thế giới.' },
+  { icon: ShieldCheck, title: 'Tin cậy', description: 'Thông tin được xác thực bởi các chuyên gia hàng đầu và các tổ chức học thuật uy tín trên thế giới.' },
   { icon: Lightbulb, title: 'Đổi mới', description: 'Tiên phong ứng dụng công nghệ hiện đại vào quản trị dữ liệu và trải nghiệm người dùng.' },
   { icon: GraduationCap, title: 'Học thuật', description: 'Tôn trọng sự liêm chính và các tiêu chuẩn khắt khe trong nghiên cứu khoa học.' },
 ]
 
 const leaders = [
-  { name: 'GS.TS. Đặng Minh Quân', role: 'Giám đốc điều hành', position: '12% center' },
-  { name: 'PGS.TS. Lê Thùy Chi', role: 'Giám đốc học thuật', position: '37% center' },
-  { name: 'ThS. Nguyễn Hoàng Nam', role: 'Giám đốc công nghệ', position: '63% center' },
-  { name: 'Bà Trần Minh Anh', role: 'Trưởng bộ phận lưu trữ', position: '88% center' },
+  {
+    name: 'GS.TS. Đặng Minh Quân',
+    role: 'Giám đốc điều hành',
+    summary: 'Định hướng chiến lược phát triển thư viện số và mở rộng kết nối học thuật trong nước, quốc tế.',
+    image: leaderQuanImage,
+  },
+  {
+    name: 'PGS.TS. Lê Thùy Chi',
+    role: 'Giám đốc học thuật',
+    summary: 'Phụ trách chuẩn hóa nội dung, chất lượng học liệu và các chương trình hỗ trợ nghiên cứu chuyên sâu.',
+    image: leaderChiImage,
+  },
+  {
+    name: 'ThS. Nguyễn Hoàng Nam',
+    role: 'Giám đốc công nghệ',
+    summary: 'Dẫn dắt hạ tầng nền tảng, dữ liệu số và các trải nghiệm tra cứu hiện đại cho người dùng.',
+    image: leaderNamImage,
+  },
+  {
+    name: 'Bà Trần Minh Anh',
+    role: 'Trưởng bộ phận lưu trữ',
+    summary: 'Chịu trách nhiệm bảo tồn tài nguyên số, chuẩn hóa metadata và vận hành kho lưu trữ bền vững.',
+    image: leaderAnhImage,
+  },
 ]
 
 function AboutUs() {
@@ -44,8 +67,7 @@ function AboutUs() {
           <div className="relative mx-auto flex min-h-[240px] max-w-3xl flex-col items-center justify-center pb-5">
             <h1 className="font-serif text-[30px] font-semibold tracking-tight sm:text-[34px]">Về Readora</h1>
             <p className="mt-3 max-w-2xl text-[14px] font-medium leading-7 text-slate-600">
-              Kiến tạo cầu nối tri thức, nâng tầm giá trị học thuật thông qua giải pháp
-              lưu trữ số hiện đại và bảo tồn di sản trí tuệ nhân loại.
+              Kiến tạo cầu nối tri thức, nâng tầm giá trị học thuật thông qua giải pháp lưu trữ số hiện đại và bảo tồn di sản trí tuệ nhân loại.
             </p>
           </div>
         </section>
@@ -87,51 +109,39 @@ function AboutUs() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <div>
+        <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
             <h2 className="font-serif text-[26px] font-semibold tracking-tight">Đội ngũ lãnh đạo</h2>
-            <p className="mt-2 text-[14px] text-slate-600">Những người dẫn dắt sứ mệnh nâng tầm tri thức tại Readora.</p>
+            <p className="mt-2 text-[14px] leading-7 text-slate-600">
+              Những người dẫn dắt sứ mệnh nâng tầm tri thức tại Readora với nền tảng học thuật, công nghệ và lưu trữ chuyên sâu.
+            </p>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
             {leaders.map((leader) => (
-              <article key={leader.name}>
-                <div className="h-56 overflow-hidden rounded-sm border border-slate-300 bg-slate-100">
-                  <img src={leadersImage} alt={leader.name} className="h-full w-full object-cover" style={{ objectPosition: leader.position }} />
+              <article key={leader.name} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl">
+                <div className="bg-gradient-to-b from-slate-100 to-slate-200 p-1">
+                  <div className="aspect-square overflow-hidden rounded-2xl bg-white/60">
+                    <img src={leader.image} alt={leader.name} className="h-[108%] w-full object-cover object-top" />
+                  </div>
                 </div>
-                <h3 className="mt-3 font-serif text-lg font-semibold leading-7">{leader.name}</h3>
-                <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-[#817000]">{leader.role}</p>
+
+                <div className="p-4">
+                  <p className="inline-flex rounded-full bg-[#f3eed0] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6d5f00]">
+                    {leader.role}
+                  </p>
+                  <h3 className="mt-3 min-h-[72px] font-serif text-[19px] font-semibold leading-9 text-slate-950">
+                    {leader.name}
+                  </h3>
+                  <p className="line-clamp-4 text-[13px] leading-6 text-slate-600">
+                    {leader.summary}
+                  </p>
+                </div>
               </article>
             ))}
           </div>
         </section>
 
-        <section className="bg-[#082b51] px-4 py-10 text-white sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1fr_0.88fr] lg:items-center">
-            <div>
-              <h2 className="font-serif text-[26px] font-semibold tracking-tight">Liên hệ Hỗ trợ Nghiên cứu</h2>
-              <p className="mt-3 max-w-lg text-[13px] leading-6 text-blue-100/75">
-                Đội ngũ chuyên gia của chúng tôi luôn sẵn sàng hỗ trợ bạn trong việc tìm kiếm tài liệu và tối ưu hóa quy trình nghiên cứu.
-              </p>
-
-              <div className="mt-5 space-y-2.5 text-[13px] text-blue-50">
-                <p className="flex items-center gap-2.5"><Mail size={16} />research@readora.edu.vn</p>
-                <p className="flex items-center gap-2.5"><Phone size={16} />+84 (024) 1234 5678</p>
-                <p className="flex items-center gap-2.5"><MapPin size={16} />Tầng 4, Tòa nhà Tri thức, 123 Đường Học Thuật, Hà Nội</p>
-              </div>
-            </div>
-
-            <form className="rounded-md border border-white/10 bg-white/10 p-5 shadow-2xl backdrop-blur">
-              <h3 className="font-serif text-lg font-semibold">Yêu cầu hỗ trợ trực tiếp</h3>
-              <div className="mt-4 space-y-3">
-                <input className="h-10 w-full rounded-sm border border-white/15 bg-white/10 px-3.5 text-sm text-white outline-none placeholder:text-blue-100/50" placeholder="Họ và tên" />
-                <input className="h-10 w-full rounded-sm border border-white/15 bg-white/10 px-3.5 text-sm text-white outline-none placeholder:text-blue-100/50" placeholder="Email học thuật" />
-                <textarea className="min-h-24 w-full resize-none rounded-sm border border-white/15 bg-white/10 px-3.5 py-3 text-sm text-white outline-none placeholder:text-blue-100/50" placeholder="Nội dung yêu cầu nghiên cứu..." />
-                <button className="h-10 w-full rounded-sm bg-[#817000] text-[13px] font-semibold text-white transition hover:bg-[#6e6000]">Gửi yêu cầu</button>
-              </div>
-            </form>
-          </div>
-        </section>
       </main>
 
       <Footer />

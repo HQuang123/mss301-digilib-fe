@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bookmark, ChevronDown, ChevronLeft, ChevronRight, ListFilter, Search } from 'lucide-react'
-import { getBooks, searchBooks } from '@/api/bookApi'
+import { BookOpen, Bookmark, ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { getBooks } from '@/api/bookApi'
+import BookCoverImage from '@/components/books/BookCoverImage'
 import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
-import { Link } from 'react-router-dom'
+import { resolveBackendFileUrls } from '@/utils/fileUrl'
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
-const pageSize = 24
+const pageSize = 8
+const fetchSize = 100
 
 const fallbackBooks = [
-  { bookId: 'demo-1', title: 'Cơ sở dữ liệu và Hệ quản trị tri thức', author: 'GS. Nguyễn Văn A', categoryName: 'Khoa học', publicationYear: 2023, availabilityStatus: 'ACTIVE', materialType: 'Sách' },
-  { bookId: 'demo-2', title: 'Kinh tế học số: Lý thuyết và Thực tiễn ứng dụng', author: 'PGS. Trần Thị B', categoryName: 'Kinh tế', publicationYear: 2022, availabilityStatus: 'BORROWED', materialType: 'Sách' },
-  { bookId: 'demo-3', title: 'Quy hoạch Đô thị và Phát triển Bền vững', author: 'TS. Lê Hoàng C', categoryName: 'Công nghệ', publicationYear: 2024, availabilityStatus: 'ACTIVE', materialType: 'Luận văn' },
-  { bookId: 'demo-4', title: 'Tạp chí Khoa học & Công nghệ - Số Đặc biệt', author: 'Hội đồng Khoa học Readora', categoryName: 'Tạp chí', publicationYear: 2024, availabilityStatus: 'ACTIVE', materialType: 'Tạp chí' },
+  { bookId: 'demo-1', title: 'Cơ sở dữ liệu và Hệ quản trị tri thức', author: 'GS. Nguyễn Văn A', categoryName: 'Công nghệ thông tin', publicationYear: 2023, availabilityStatus: 'ACTIVE' },
+  { bookId: 'demo-2', title: 'Kinh tế học số: Lý thuyết và Thực tiễn ứng dụng', author: 'PGS. Trần Thị B', categoryName: 'Kinh tế', publicationYear: 2022, availabilityStatus: 'BORROWED' },
+  { bookId: 'demo-3', title: 'Quy hoạch Đô thị và Phát triển Bền vững', author: 'TS. Lê Hoàng C', categoryName: 'Khoa học', publicationYear: 2024, availabilityStatus: 'ACTIVE' },
+  { bookId: 'demo-4', title: 'Tạp chí Khoa học và Công nghệ - Số đặc biệt', author: 'Hội đồng Khoa học Readora', categoryName: 'Tạp chí', publicationYear: 2024, availabilityStatus: 'ACTIVE' },
 ]
 
 const materialTypes = [
@@ -22,21 +24,12 @@ const materialTypes = [
   { label: 'Bản đồ', value: 'Bản đồ' },
 ]
 
-const topics = ['Khoa học', 'Công nghệ', 'Kinh tế', 'Lịch sử']
-
 function getBookCoverUrl(coverImageUrl) {
-  if (!coverImageUrl) return null
-  if (coverImageUrl.startsWith('http')) return coverImageUrl
-  if (coverImageUrl.startsWith('/')) return `${apiBaseUrl}${coverImageUrl}`
-  return `${apiBaseUrl}/${coverImageUrl}`
-}
-
-function normalizePage(data) {
-  return { books: data?.content || [], totalElements: data?.totalElements || 0, totalPages: data?.totalPages || 1 }
+  return resolveBackendFileUrls(coverImageUrl)
 }
 
 function getMaterialType(book) {
-  return book.materialType || book.type || book.documentType || book.categoryName || 'Sách'
+  return book.materialType || book.type || book.documentType || 'Sách'
 }
 
 function getStatusLabel(status) {
@@ -46,12 +39,48 @@ function getStatusLabel(status) {
   return 'Sẵn có'
 }
 
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+function isVisibleBook(book) {
+  if (!book) return false
+  if (book.isDeleted === true) return false
+  if (book.deleted === true) return false
+  if (book.deletedAt) return false
+  if (['DELETED', 'ARCHIVED', 'INACTIVE'].includes(String(book.recordStatus || '').toUpperCase())) return false
+  if (['DELETED', 'ARCHIVED', 'INACTIVE'].includes(String(book.status || '').toUpperCase())) return false
+  if (['ARCHIVED', 'INACTIVE'].includes(String(book.availabilityStatus || '').toUpperCase())) return false
+  return true
+}
+
+function sortBooks(items, sort) {
+  const sortedItems = [...items]
+
+  if (sort === 'title,asc') {
+    sortedItems.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'vi'))
+    return sortedItems
+  }
+
+  if (sort === 'publicationYear,desc') {
+    sortedItems.sort((a, b) => Number(b.publicationYear || 0) - Number(a.publicationYear || 0))
+    return sortedItems
+  }
+
+  sortedItems.sort((a, b) => {
+    const dateA = new Date(a.createdAt || 0).getTime()
+    const dateB = new Date(b.createdAt || 0).getTime()
+    return dateB - dateA
+  })
+  return sortedItems
+}
+
 function BookCover({ book, index }) {
   const coverUrl = getBookCoverUrl(book.coverImageUrl)
-
-  if (coverUrl) {
-    return <img src={coverUrl} alt={book.title} className="h-48 w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} />
-  }
 
   const variants = [
     'from-[#24364b] via-[#162334] to-[#07111f]',
@@ -60,11 +89,17 @@ function BookCover({ book, index }) {
     'from-[#eef2f3] via-[#c8d5d2] to-[#1f2933]',
   ]
 
+  const fallbackCover = (
+    <div className={`grid h-full w-full place-items-center overflow-hidden bg-gradient-to-br ${variants[index % variants.length]}`}>
+      <div className="grid h-28 w-24 place-items-center rounded-sm border border-white/25 bg-black/20 shadow-2xl backdrop-blur-[1px]">
+        <BookOpen size={28} className="text-amber-200" />
+      </div>
+    </div>
+  )
+
   return (
-    <div className={`relative h-48 overflow-hidden bg-gradient-to-br ${variants[index % variants.length]}`}>
-      <div className="absolute inset-x-8 bottom-7 top-8 rounded-sm border border-white/25 bg-black/20 shadow-2xl backdrop-blur-[1px]" />
-      <div className="absolute inset-x-12 bottom-10 top-12 rounded-sm border border-amber-200/40 bg-white/10" />
-      <p className="absolute inset-x-12 top-24 line-clamp-3 text-center text-sm font-bold leading-5 text-white">{book.title}</p>
+    <div className="flex aspect-[3/4] w-full items-center justify-center overflow-hidden bg-slate-100 p-3">
+      <BookCoverImage src={coverUrl} alt={book.title} className="h-full w-full object-contain object-center" fallback={fallbackCover} />
     </div>
   )
 }
@@ -81,47 +116,53 @@ function FilterCheckbox({ label, checked, count, onChange }) {
 
 function BookList() {
   const [books, setBooks] = useState([])
-  const [totalElements, setTotalElements] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
   const [page, setPage] = useState(0)
   const [keyword, setKeyword] = useState('')
-  const [submittedKeyword, setSubmittedKeyword] = useState('')
   const [sort, setSort] = useState('createdAt,desc')
-  const [selectedTypes, setSelectedTypes] = useState(['Sách'])
+  const [selectedTypes, setSelectedTypes] = useState([])
   const [selectedTopics, setSelectedTopics] = useState([])
   const [status, setStatus] = useState('')
   const [year, setYear] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const normalizedKeyword = normalizeText(keyword)
+
   useEffect(() => {
     let ignore = false
+
     async function loadBooks() {
       try {
         setLoading(true)
         setError('')
-        const request = submittedKeyword ? searchBooks({ keyword: submittedKeyword, page, size: pageSize, sort }) : getBooks({ page, size: pageSize, sort })
-        const response = await request
-        const data = normalizePage(response.data)
+
+        const response = await getBooks({ page: 0, size: fetchSize, sort })
+        const loadedBooks = (response.data?.content || []).filter(isVisibleBook)
+
         if (!ignore) {
-          setBooks(data.books)
-          setTotalElements(data.totalElements)
-          setTotalPages(data.totalPages)
+          setBooks(loadedBooks)
         }
       } catch {
         if (!ignore) {
           setBooks(fallbackBooks)
-          setTotalElements(6313)
-          setTotalPages(264)
           setError('Đang hiển thị dữ liệu mẫu vì chưa kết nối được catalog-service.')
         }
       } finally {
-        if (!ignore) setLoading(false)
+        if (!ignore) {
+          setLoading(false)
+        }
       }
     }
+
     loadBooks()
-    return () => { ignore = true }
-  }, [page, sort, submittedKeyword])
+    return () => {
+      ignore = true
+    }
+  }, [sort])
+
+  useEffect(() => {
+    setPage(0)
+  }, [normalizedKeyword, sort, selectedTypes, selectedTopics, status, year])
 
   const typeCounts = useMemo(() => {
     const counts = new Map(materialTypes.map((type) => [type.value, 0]))
@@ -132,28 +173,47 @@ function BookList() {
     return counts
   }, [books])
 
-  const visibleBooks = useMemo(() => {
-    return books.filter((book) => {
-      const materialType = getMaterialType(book)
-      const bookStatus = getStatusLabel(book.availabilityStatus)
-      const matchesType = selectedTypes.length === 0 || selectedTypes.includes(materialType)
-      const matchesTopic = selectedTopics.length === 0 || selectedTopics.includes(book.categoryName)
-      const matchesYear = !year || String(book.publicationYear) === year
-      const matchesStatus = !status || bookStatus === status
-      return matchesType && matchesTopic && matchesYear && matchesStatus
-    })
-  }, [books, selectedTypes, selectedTopics, status, year])
+  const topics = useMemo(() => {
+    return [...new Set(books.map((book) => book.categoryName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [books])
 
   const years = useMemo(() => {
     const values = books.map((book) => book.publicationYear).filter(Boolean).map(String)
     return [...new Set(values)].sort((a, b) => Number(b) - Number(a))
   }, [books])
 
-  function handleSearch(event) {
-    event.preventDefault()
-    setSubmittedKeyword(keyword.trim())
-    setPage(0)
-  }
+  const filteredBooks = useMemo(() => {
+    return books.filter((book) => {
+      const materialType = getMaterialType(book)
+      const bookStatus = getStatusLabel(book.availabilityStatus)
+      const searchableText = normalizeText([
+        book.title,
+        book.author,
+        book.isbn,
+        book.categoryName,
+        book.classificationName,
+        book.description,
+      ].filter(Boolean).join(' '))
+
+      const matchesKeyword = !normalizedKeyword || searchableText.includes(normalizedKeyword)
+      const matchesType = selectedTypes.length === 0 || selectedTypes.includes(materialType)
+      const matchesTopic = selectedTopics.length === 0 || selectedTopics.includes(book.categoryName)
+      const matchesYear = !year || String(book.publicationYear) === year
+      const matchesStatus = !status || bookStatus === status
+
+      return matchesKeyword && matchesType && matchesTopic && matchesYear && matchesStatus
+    })
+  }, [books, normalizedKeyword, selectedTypes, selectedTopics, status, year])
+
+  const visibleBooks = useMemo(() => {
+    const sortedBooks = sortBooks(filteredBooks, sort)
+    const start = page * pageSize
+    return sortedBooks.slice(start, start + pageSize)
+  }, [filteredBooks, sort, page])
+
+  const totalElements = filteredBooks.length
+  const totalPages = Math.max(1, Math.ceil(totalElements / pageSize))
+  const pageNumbers = Array.from({ length: Math.min(totalPages, 3) }, (_, index) => index).filter((item) => item < totalPages)
 
   function toggleValue(value, selected, setter) {
     setter(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value])
@@ -166,8 +226,6 @@ function BookList() {
     setYear('')
   }
 
-  const pageNumbers = [0, 1, 2].filter((item) => item < totalPages)
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <Header />
@@ -176,18 +234,19 @@ function BookList() {
         <section className="bg-[#082b51] px-4 py-8 text-white sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <p className="text-[13px] font-semibold text-blue-200">Trang chủ &gt; Danh mục</p>
-            <h1 className="mt-2 font-serif text-[30px] font-semibold tracking-tight sm:text-[32px]">Danh mục Tài liệu số</h1>
+            <h1 className="mt-2 font-serif text-[30px] font-semibold tracking-tight sm:text-[32px]">Danh mục tài liệu số</h1>
 
-            <form onSubmit={handleSearch} className="mt-5 flex max-w-2xl flex-col gap-3 sm:flex-row">
+            <div className="mt-5 max-w-2xl">
               <label className="flex h-10 flex-1 items-center gap-2.5 rounded bg-white px-3 text-slate-500">
                 <Search size={16} />
-                <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm theo tên sách, tác giả, ISBN hoặc từ khóa..." className="h-full w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-500" />
+                <input
+                  value={keyword}
+                  onChange={(event) => setKeyword(event.target.value)}
+                  placeholder="Tìm theo tên sách, tác giả, ISBN hoặc từ khóa..."
+                  className="h-full w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-500"
+                />
               </label>
-              <button className="inline-flex h-10 items-center justify-center gap-2 rounded bg-[#817000] px-5 text-[13px] font-semibold text-white transition hover:bg-[#6e6000]">
-                <ListFilter size={15} />
-                Tìm kiếm
-              </button>
-            </form>
+            </div>
           </div>
         </section>
 
@@ -203,7 +262,13 @@ function BookList() {
                 <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Loại tài liệu</h3>
                 <div className="mt-3.5 space-y-2.5">
                   {materialTypes.map((type) => (
-                    <FilterCheckbox key={type.value} label={type.label} count={typeCounts.get(type.value)} checked={selectedTypes.includes(type.value)} onChange={() => toggleValue(type.value, selectedTypes, setSelectedTypes)} />
+                    <FilterCheckbox
+                      key={type.value}
+                      label={type.label}
+                      count={typeCounts.get(type.value)}
+                      checked={selectedTypes.includes(type.value)}
+                      onChange={() => toggleValue(type.value, selectedTypes, setSelectedTypes)}
+                    />
                   ))}
                 </div>
               </div>
@@ -251,7 +316,7 @@ function BookList() {
 
               <label className="flex items-center gap-2 text-[13px] text-slate-700">
                 Sắp xếp theo:
-                <select value={sort} onChange={(event) => { setSort(event.target.value); setPage(0) }} className="h-8 rounded-none border border-slate-300 bg-white px-2.5 outline-none">
+                <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-8 rounded-none border border-slate-300 bg-white px-2.5 outline-none">
                   <option value="createdAt,desc">Mới nhất</option>
                   <option value="title,asc">Tên A-Z</option>
                   <option value="publicationYear,desc">Năm mới nhất</option>
@@ -261,9 +326,9 @@ function BookList() {
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {loading
-                ? Array.from({ length: 8 }).map((_, index) => (
-                    <div key={index} className="h-[340px] animate-pulse rounded border border-slate-200 bg-white">
-                      <div className="h-48 bg-slate-200" />
+                ? Array.from({ length: pageSize }).map((_, index) => (
+                    <div key={index} className="animate-pulse rounded border border-slate-200 bg-white">
+                      <div className="aspect-[3/4] bg-slate-200" />
                       <div className="space-y-3 p-3.5">
                         <div className="h-4 rounded bg-slate-200" />
                         <div className="h-4 w-4/5 rounded bg-slate-200" />

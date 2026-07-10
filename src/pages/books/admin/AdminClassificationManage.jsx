@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ChevronLeft, ChevronRight, Pencil, PlusCircle, RefreshCw, RotateCcw, Search, Tags, Trash2 } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { deleteClassification, getBooks, getClassifications, getDeletedClassifications, restoreClassification } from '@/api/bookApi'
-import LibrarianLayout from './LibrarianLayout'
+import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw, Search, Tags } from 'lucide-react'
+import { getBooks, getClassifications, getDeletedClassifications } from '@/api/bookApi'
+import AdminLayout from '@/components/layout/AdminLayout'
 
 const pageSize = 10
 
@@ -12,10 +11,6 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim()
-}
-
-function getApiErrorMessage(error, fallbackMessage) {
-  return error?.response?.data?.message || fallbackMessage
 }
 
 function MetricCard({ title, value, note, icon: Icon, danger }) {
@@ -35,94 +30,18 @@ function MetricCard({ title, value, note, icon: Icon, danger }) {
 
 function StatusBadge({ isDeleted }) {
   if (isDeleted) {
-    return (
-      <span className="inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-[10px] font-semibold text-rose-700">
-        Đã xóa mềm
-      </span>
-    )
+    return <span className="inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-[10px] font-semibold text-rose-700">Đã xóa mềm</span>
   }
 
-  return (
-    <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-      Đang hoạt động
-    </span>
-  )
+  return <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">Đang hoạt động</span>
 }
 
-function DeleteClassificationModal({ classification, deleting, onClose, onConfirm }) {
-  if (!classification) return null
-  const hasLinkedBooks = Number(classification.bookCount || 0) > 0
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
-        <h2 className="font-serif text-[24px] font-semibold tracking-tight text-slate-950">Xác nhận xóa phân loại</h2>
-        <p className="mt-3 text-[14px] leading-7 text-slate-600">
-          Bạn có chắc chắn muốn xóa phân loại <strong>{classification.classificationName}</strong> khỏi hệ thống?
-        </p>
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-[13px] text-slate-600">
-          <p>Mã phân loại: {classification.classificationId}</p>
-          <p className="mt-1">Hệ thống: {classification.classificationSystem || 'Chưa cập nhật'}</p>
-          <p className="mt-1">Code DDC: {classification.classificationCode ?? 'Chưa cập nhật'}</p>
-          <p className="mt-1">Số đầu sách liên kết: {classification.bookCount}</p>
-        </div>
-        {hasLinkedBooks && (
-          <p className="mt-4 text-sm text-red-600">Không thể xóa phân loại đang được gắn cho sách.</p>
-        )}
-        <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} disabled={deleting} className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50">
-            Hủy
-          </button>
-          <button
-            onClick={() => onConfirm(classification)}
-            disabled={deleting || hasLinkedBooks}
-            className="rounded-2xl bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50"
-          >
-            {deleting ? 'Đang xóa...' : 'Xác nhận xóa'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function RestoreClassificationModal({ classification, restoring, onClose, onConfirm }) {
-  if (!classification) return null
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
-        <h2 className="font-serif text-[24px] font-semibold tracking-tight text-slate-950">Khôi phục phân loại</h2>
-        <p className="mt-3 text-[14px] leading-7 text-slate-600">
-          Bạn có muốn khôi phục phân loại <strong>{classification.classificationName}</strong> không?
-        </p>
-        <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} disabled={restoring} className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50">
-            Hủy
-          </button>
-          <button
-            onClick={() => onConfirm(classification)}
-            disabled={restoring}
-            className="rounded-2xl bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
-          >
-            {restoring ? 'Đang khôi phục...' : 'Khôi phục'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function LibrarianClassifications() {
+function AdminClassificationManage() {
   const [classifications, setClassifications] = useState([])
-  const [classificationToDelete, setClassificationToDelete] = useState(null)
-  const [classificationToRestore, setClassificationToRestore] = useState(null)
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState(false)
-  const [restoringClassificationId, setRestoringClassificationId] = useState(null)
   const [error, setError] = useState('')
   const [keywordInput, setKeywordInput] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -176,7 +95,6 @@ function LibrarianClassifications() {
               classification.classificationName,
               classification.classificationCode,
             ].join(' '))
-
             return searchTarget.includes(normalizeText(targetKeyword))
           })
         : mergedClassifications
@@ -187,11 +105,11 @@ function LibrarianClassifications() {
       setClassifications(paginatedClassifications)
       setTotalElements(filteredClassifications.length)
       setTotalPages(Math.max(1, Math.ceil(filteredClassifications.length / pageSize)))
-    } catch (error) {
+    } catch {
       setClassifications([])
       setTotalElements(0)
       setTotalPages(1)
-      setError(getApiErrorMessage(error, 'Không tải được danh sách phân loại từ backend.'))
+      setError('Không tải được danh sách phân loại từ backend.')
     } finally {
       setLoading(false)
     }
@@ -200,40 +118,6 @@ function LibrarianClassifications() {
   useEffect(() => {
     loadClassifications(page, keyword)
   }, [page, keyword])
-
-  async function handleDelete(classification) {
-    try {
-      setDeleting(true)
-      setError('')
-      await deleteClassification(classification.classificationId)
-      setClassificationToDelete(null)
-
-      const nextPage = classifications.length === 1 && page > 0 ? page - 1 : page
-      if (nextPage !== page) {
-        setPage(nextPage)
-      } else {
-        await loadClassifications(nextPage, keyword)
-      }
-    } catch (error) {
-      setError(getApiErrorMessage(error, 'Xóa phân loại thất bại. Vui lòng kiểm tra backend.'))
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  async function handleRestore(classification) {
-    try {
-      setRestoringClassificationId(classification.classificationId)
-      setError('')
-      await restoreClassification(classification.classificationId)
-      setClassificationToRestore(null)
-      await loadClassifications(page, keyword)
-    } catch (error) {
-      setError(getApiErrorMessage(error, 'Khôi phục phân loại thất bại. Vui lòng kiểm tra backend.'))
-    } finally {
-      setRestoringClassificationId(null)
-    }
-  }
 
   const metrics = useMemo(() => {
     const linkedCount = classifications.filter((classification) => !classification.isDeleted && classification.bookCount > 0).length
@@ -245,7 +129,7 @@ function LibrarianClassifications() {
       { title: 'Tổng số phân loại', value: totalElements.toLocaleString('vi-VN'), note: `Trang hiện tại: ${page + 1}/${totalPages}`, icon: Tags },
       { title: 'Có đầu sách liên kết', value: linkedCount.toLocaleString('vi-VN'), note: 'Trên trang hiện tại', icon: RefreshCw },
       { title: 'Chưa gắn sách', value: emptyCount.toLocaleString('vi-VN'), note: 'Cần rà soát', icon: AlertTriangle, danger: emptyCount > 0 },
-      { title: 'Đã xóa mềm', value: deletedCount.toLocaleString('vi-VN'), note: `Chuẩn DDC đang hoạt động: ${ddcCount.toLocaleString('vi-VN')}`, icon: RotateCcw },
+      { title: 'Chuẩn DDC hoạt động', value: ddcCount.toLocaleString('vi-VN'), note: `${deletedCount.toLocaleString('vi-VN')} bản ghi đã xóa mềm`, icon: Tags },
     ]
   }, [classifications, page, totalElements, totalPages])
 
@@ -257,16 +141,10 @@ function LibrarianClassifications() {
   }, [page, totalPages])
 
   return (
-    <LibrarianLayout
+    <AdminLayout
       active="classifications"
       title="Phân loại sách"
-      description="Danh sách phân loại đã được nối với backend để librarian theo dõi, thêm mới, chỉnh sửa, xóa mềm và khôi phục trực tiếp."
-      action={
-        <Link to="/librarian/classifications/add" className="inline-flex h-10 items-center gap-2 rounded-2xl bg-slate-950 px-4 text-[13px] font-semibold text-white">
-          <PlusCircle size={18} />
-          Thêm phân loại DDC
-        </Link>
-      }
+      description="Admin chỉ xem dữ liệu phân loại sách và trạng thái hiện tại."
     >
       <section className="grid gap-4 xl:grid-cols-4">
         {metrics.map((metric) => (
@@ -290,10 +168,7 @@ function LibrarianClassifications() {
                 placeholder="Tìm phân loại..."
               />
             </label>
-            <button
-              onClick={() => loadClassifications(page, keyword)}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 px-3 py-2 text-[13px] font-medium text-slate-700"
-            >
+            <button onClick={() => loadClassifications(page, keyword)} className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 px-3 py-2 text-[13px] font-medium text-slate-700">
               <RefreshCw size={15} />
               Làm mới
             </button>
@@ -303,7 +178,7 @@ function LibrarianClassifications() {
         {error && <div className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">{error}</div>}
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1080px] text-left">
+          <table className="w-full min-w-[980px] text-left">
             <thead className="bg-slate-50 text-[13px] font-semibold text-slate-500">
               <tr>
                 <th className="px-5 py-4">Mã phân loại</th>
@@ -312,14 +187,13 @@ function LibrarianClassifications() {
                 <th className="px-5 py-4">Code DDC</th>
                 <th className="px-5 py-4 text-center">Số sách</th>
                 <th className="px-5 py-4">Trạng thái</th>
-                <th className="px-5 py-4 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading
                 ? Array.from({ length: 5 }).map((_, index) => (
                     <tr key={index}>
-                      <td className="px-5 py-4" colSpan={7}>
+                      <td className="px-5 py-4" colSpan={6}>
                         <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
                       </td>
                     </tr>
@@ -338,31 +212,11 @@ function LibrarianClassifications() {
                       <td className="px-5 py-4">
                         <StatusBadge isDeleted={classification.isDeleted} />
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-3 text-slate-600">
-                          {!classification.isDeleted && (
-                            <>
-                              <Link to={`/librarian/classifications/${classification.classificationId}/edit`} aria-label="Sửa phân loại"><Pencil size={18} /></Link>
-                              <button onClick={() => setClassificationToDelete(classification)} aria-label="Xóa phân loại" className="transition hover:text-red-700"><Trash2 size={18} /></button>
-                            </>
-                          )}
-                          {classification.isDeleted && (
-                            <button
-                              onClick={() => setClassificationToRestore(classification)}
-                              disabled={restoringClassificationId === classification.classificationId}
-                              aria-label="Khôi phục phân loại"
-                              className="transition hover:text-emerald-700 disabled:opacity-50"
-                            >
-                              <RotateCcw size={18} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
                     </tr>
                   ))}
               {!loading && classifications.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-slate-500">Không có phân loại nào để hiển thị.</td>
+                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-500">Không có phân loại nào để hiển thị.</td>
                 </tr>
               )}
             </tbody>
@@ -388,21 +242,8 @@ function LibrarianClassifications() {
           </div>
         </div>
       </section>
-
-      <DeleteClassificationModal
-        classification={classificationToDelete}
-        deleting={deleting}
-        onClose={() => setClassificationToDelete(null)}
-        onConfirm={handleDelete}
-      />
-      <RestoreClassificationModal
-        classification={classificationToRestore}
-        restoring={restoringClassificationId === classificationToRestore?.classificationId}
-        onClose={() => setClassificationToRestore(null)}
-        onConfirm={handleRestore}
-      />
-    </LibrarianLayout>
+    </AdminLayout>
   )
 }
 
-export default LibrarianClassifications
+export default AdminClassificationManage

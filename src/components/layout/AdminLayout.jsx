@@ -24,8 +24,9 @@ const navItems = [
 const bookLinks = [
   { key: 'books', label: 'Thông tin sách', to: '/admin/books' },
   { key: 'digital-books', label: 'Sách điện tử', to: '/admin/digital-books' },
-  { key: 'copies', label: 'Bản sao', to: '/admin/copies' },
+  { key: 'copies', label: 'Kho sách', to: '/admin/copies' },
   { key: 'categories', label: 'Danh mục', to: '/admin/categories' },
+  { key: 'classifications', label: 'Phân loại sách', to: '/admin/classifications' },
 ]
 
 function NavItem({ item, active }) {
