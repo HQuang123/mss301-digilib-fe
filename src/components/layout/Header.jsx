@@ -1,25 +1,14 @@
-import { Bell, CircleUserRound, Compass, LogOut, Menu } from 'lucide-react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Bell, CircleUserRound, Compass, Menu } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import useAuthStore from '@/store/authSlice'
 
 const navItems = [
   { label: 'Trang chủ', to: '/' },
   { label: 'Danh mục', to: '/books' },
-  { label: 'About Us', to: '/about' },
+  { label: 'Giới thiệu', to: '/about' },
 ]
 
 function Header() {
-  const { accessToken, user, roles } = useAuthStore()
-  const logout = useAuthStore((s) => s.logout)
-  const navigate = useNavigate()
-  const isLoggedIn = !!accessToken
-
-  async function handleLogout() {
-    await logout()
-    navigate('/login')
-  }
-
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/82 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -50,43 +39,18 @@ function Header() {
         </nav>
 
         <div className="hidden items-center gap-1.5 md:flex">
-          {isLoggedIn ? (
-            <>
-              <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Thông báo">
-                <Bell size={16} />
-              </Button>
-              <NavLink to="/profile">
-                <Button variant="secondary" size="sm" className="rounded-full px-3" aria-label="Tài khoản">
-                  <CircleUserRound size={16} />
-                  {user?.firstName || 'Tài khoản'}
-                </Button>
-              </NavLink>
-              {roles.includes('admin') && (
-                <NavLink to="/admin">
-                  <Button variant="outline" size="sm" className="rounded-full px-3">
-                    Admin
-                  </Button>
-                </NavLink>
-              )}
-              {roles.includes('librarian') && !roles.includes('admin') && (
-                <NavLink to="/librarian">
-                  <Button variant="outline" size="sm" className="rounded-full px-3">
-                    Librarian
-                  </Button>
-                </NavLink>
-              )}
-              <Button variant="ghost" size="sm" className="rounded-full px-3 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={handleLogout}>
-                <LogOut size={14} />
-                Đăng xuất
-              </Button>
-            </>
-          ) : (
-            <NavLink to="/login">
-              <Button variant="default" size="sm" className="rounded-full px-4">
-                Đăng nhập
-              </Button>
-            </NavLink>
-          )}
+          <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Thông báo">
+            <Bell size={16} />
+          </Button>
+          <Button variant="secondary" size="sm" className="rounded-full px-3" aria-label="Tài khoản">
+            <CircleUserRound size={16} />
+            Tài khoản
+          </Button>
+          <NavLink to="/login">
+            <Button variant="default" size="sm" className="rounded-full px-4">
+              Đăng nhập
+            </Button>
+          </NavLink>
         </div>
 
         <div className="flex items-center gap-1.5 md:hidden">

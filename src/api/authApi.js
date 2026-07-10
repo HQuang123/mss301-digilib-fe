@@ -8,3 +8,6 @@ export const register = ({ email, password, firstName, lastName }) =>
 
 export const logout = (refreshToken) =>
   axiosClient.post('/api/v1/auth/logout', { refreshToken })
+
+export const exchangeOAuth2Code = (code, codeVerifier, redirectUri) =>
+  axiosClient.post('/api/v1/auth/oauth2/exchange', { code, codeVerifier, redirectUri })

@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2, AlertCircle } from 'lucide-react'
-import axios from 'axios'
 import useAuthStore from '@/store/authSlice'
 import { OAUTH_CONFIG } from '@/lib/oauth2'
+import { exchangeOAuth2Code } from '@/api/authApi'
 
 function OAuth2Callback() {
   const [searchParams] = useSearchParams()
@@ -43,21 +43,10 @@ function OAuth2Callback() {
       return
     }
 
-    // Exchange code for tokens
+    // Exchange code for tokens via the backend (which adds the client_secret)
     const exchangeToken = async () => {
       try {
-        const tokenParams = new URLSearchParams()
-        tokenParams.append('grant_type', 'authorization_code')
-        tokenParams.append('client_id', OAUTH_CONFIG.clientId)
-        tokenParams.append('code', code)
-        tokenParams.append('redirect_uri', OAUTH_CONFIG.redirectUri)
-        tokenParams.append('code_verifier', savedVerifier)
-
-        const res = await axios.post(`${OAUTH_CONFIG.keycloakUrl}/token`, tokenParams, {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        })
+        const res = await exchangeOAuth2Code(code, savedVerifier, OAUTH_CONFIG.redirectUri)
 
         const { access_token, refresh_token } = res.data
 

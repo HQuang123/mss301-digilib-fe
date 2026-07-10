@@ -26,9 +26,9 @@ axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Skip auto-logout for the login endpoint itself
+      // Skip auto-logout for unauthenticated auth endpoints (login, register, oauth2/exchange)
       const url = error.config?.url || ''
-      if (!url.includes('/auth/login')) {
+      if (!url.includes('/auth/')) {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         // Redirect to login — using window.location to break out of React Router
