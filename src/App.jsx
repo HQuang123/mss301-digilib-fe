@@ -16,6 +16,8 @@ import AboutUs from './pages/books/AboutUs'
 // ── Authenticated pages ─────────────────────────────────────────────────────
 import Profile from './pages/members/Profile'
 import MemberList from './pages/members/MemberList'
+import LoanDash from './pages/loans/LoanDash'
+import LoanHistory from './pages/loans/LoanHistory'
 
 // ── Admin pages ─────────────────────────────────────────────────────────────
 import AdminDashboard from './pages/dashboard/AdminDashboard'
@@ -25,6 +27,7 @@ import AdminDigitalBookManage from './pages/books/admin/AdminDigitalBookManage'
 import AdminCopyManage from './pages/books/admin/AdminCopyManage'
 import AdminCategoryManage from './pages/books/admin/AdminCategoryManage'
 import AdminClassificationManage from './pages/books/admin/AdminClassificationManage'
+import AdminCategoryForm from './pages/books/admin/AdminCategoryForm'
 
 // ── Librarian pages ─────────────────────────────────────────────────────────
 import LibrarianDashboard from './pages/books/librarian/LibrarianDashboard'
@@ -92,6 +95,7 @@ function App() {
 
         {/* ── Authenticated (any role) ────────────────────────────── */}
         <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+        <Route path="/loans" element={<PrivateRoute><LoanHistory /></PrivateRoute>} />
 
         {/* ── Admin routes ────────────────────────────────────────── */}
         <Route path="/admin" element={<PrivateRoute requiredRoles={['admin']}><AdminDashboard /></PrivateRoute>} />
@@ -127,6 +131,9 @@ function App() {
         <Route path="/librarian/classifications/add" element={<PrivateRoute requiredRoles={['admin', 'librarian']}><LibrarianClassificationForm mode="add" /></PrivateRoute>} />
         <Route path="/librarian/classifications/:classificationId/edit" element={<PrivateRoute requiredRoles={['admin', 'librarian']}><LibrarianClassificationForm mode="edit" /></PrivateRoute>} />
         <Route path="/librarian/members" element={<PrivateRoute requiredRoles={['admin', 'librarian']}><MemberList /></PrivateRoute>} />
+        <Route path="/librarian/loans" element={<PrivateRoute requiredRoles={['admin', 'librarian']}><LoanDash /></PrivateRoute>} />
+        <Route path="/librarian/loans/returns" element={<PrivateRoute requiredRoles={['admin', 'librarian']}><LoanDash /></PrivateRoute>} />
+        <Route path="/librarian/loans/history" element={<PrivateRoute requiredRoles={['admin', 'librarian']}><LoanDash /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
   )

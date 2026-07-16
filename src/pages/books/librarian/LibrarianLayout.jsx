@@ -24,7 +24,11 @@ const bookLinks = [
   { key: 'classifications', label: 'Phân loại sách', to: '/librarian/classifications' },
 ]
 
-const loanLinks = ['Phiếu mượn', 'Trả sách', 'Lịch sử mượn']
+const loanLinks = [
+  { key: 'loans', label: 'Phiếu mượn', to: '/librarian/loans' },
+  { key: 'loan-returns', label: 'Trả sách', to: '/librarian/loans/returns' },
+  { key: 'loan-history', label: 'Lịch sử mượn', to: '/librarian/loans/history' },
+]
 const reservationLinks = ['Danh sách đặt trước', 'Hàng đợi']
 
 function SidebarSubLink({ item, active }) {
@@ -104,7 +108,7 @@ function LibrarianLayout({ active = 'dashboard', title, description, action, chi
 
   const [openGroups, setOpenGroups] = useState({
     books: true,
-    loans: false,
+    loans: active.startsWith('loan'),
     reservations: false,
   })
 
@@ -136,10 +140,8 @@ function LibrarianLayout({ active = 'dashboard', title, description, action, chi
             ))}
           </SidebarGroup>
           <SidebarGroup icon={ClipboardList} label="Quản lý mượn trả" open={openGroups.loans} onToggle={() => toggleGroup('loans')}>
-            {loanLinks.map((label) => (
-              <a key={label} href="#loans" className="block rounded-2xl px-3 py-2 text-[13px] text-slate-300 transition hover:bg-white/8 hover:text-white">
-                {label}
-              </a>
+            {loanLinks.map((item) => (
+              <SidebarSubLink key={item.key} item={item} active={active === item.key} />
             ))}
           </SidebarGroup>
           <SidebarGroup icon={PanelTop} label="Quản lý đặt trước" open={openGroups.reservations} onToggle={() => toggleGroup('reservations')}>
