@@ -41,6 +41,9 @@ import LibrarianInventoryForm from './pages/books/librarian/LibrarianInventoryFo
 import LibrarianDigitalBookForm from './pages/books/librarian/LibrarianDigitalBookForm'
 import LibrarianGenreForm from './pages/books/librarian/LibrarianGenreForm'
 import LibrarianClassificationForm from './pages/books/librarian/LibrarianClassificationForm'
+import AdminBookForm from './pages/books/admin/AdminBookForm'
+import AdminDigitalBookForm from './pages/books/admin/AdminDigitalBookForm'
+import AdminCopyForm from './pages/books/admin/AdminCopyForm'
 
 function App() {
   const initialize = useAuthStore((s) => s.initialize)
