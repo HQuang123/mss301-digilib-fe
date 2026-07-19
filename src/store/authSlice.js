@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import * as authApi from '@/api/authApi'
 import * as memberApi from '@/api/memberApi'
+import useNotificationStore from '@/store/notificationSlice'
 
 // ── JWT helpers (no external dependency) ────────────────────────────────────
 
@@ -75,6 +76,7 @@ const useAuthStore = create((set, get) => ({
       user: null,
       roles: [],
     })
+    useNotificationStore.getState().reset()
   },
 
   // ── Actions ─────────────────────────────────────────────────────────────
