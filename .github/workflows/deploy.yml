@@ -1,0 +1,69 @@
+name: Build and Deploy React App to GCS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create .env file
+        run: |
+          SECRET_NAME="mss301-fe"
+          touch .env
+          gcloud secrets versions access latest --secret=$SECRET_NAME >> .env
+
+      - name: Build React app
+        run: npm run build
+
+      - name: Resolve build directory
+        id: build-dir
+        shell: bash
+        run: |
+          if [ -d "dist" ]; then
+            echo "path=dist" >> "$GITHUB_OUTPUT"
+          elif [ -d "build" ]; then
+            echo "path=build" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unable to find a build output directory. Expected dist/ or build/."
+            exit 1
+          fi
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Sync static files to GCS bucket
+        env:
+          GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
+        run: |
+          gsutil -m rsync -r -d "${{ steps.build-dir.outputs.path }}" "gs://${GCS_BUCKET}"
+
+      - name: Set cache headers for HTML
+        env:
+          GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
+        run: |
+          gsutil -m setmeta -h "Cache-Control:no-cache, max-age=0" "gs://${GCS_BUCKET}/**/*.html"

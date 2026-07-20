@@ -11,3 +11,5 @@ export const logout = (refreshToken) =>
 
 export const forgotPassword = (email) =>
   axiosClient.post('/api/v1/auth/forgot-password', { email })
+export const exchangeOAuth2Code = (code, codeVerifier, redirectUri) =>
+  axiosClient.post('/api/v1/auth/oauth2/exchange', { code, codeVerifier, redirectUri })

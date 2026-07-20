@@ -1,25 +1,15 @@
-import { Bell, CircleUserRound, Compass, LogOut, Menu } from 'lucide-react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Bell, CircleUserRound, Compass, Menu } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import useAuthStore from '@/store/authSlice'
 
 const navItems = [
   { label: 'Trang chủ', to: '/' },
   { label: 'Danh mục', to: '/books' },
-  { label: 'About Us', to: '/about' },
+  { label: 'Khoản mượn', to: '/loans' },
+  { label: 'Giới thiệu', to: '/about' },
 ]
 
 function Header() {
-  const { accessToken, user, roles } = useAuthStore()
-  const logout = useAuthStore((s) => s.logout)
-  const navigate = useNavigate()
-  const isLoggedIn = !!accessToken
-
-  async function handleLogout() {
-    await logout()
-    navigate('/login')
-  }
-
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/82 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">

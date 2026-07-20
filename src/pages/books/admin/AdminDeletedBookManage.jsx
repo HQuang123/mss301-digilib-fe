@@ -1,43 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BookOpen, ChevronLeft, ChevronRight, FileText, Layers3, Search } from 'lucide-react'
-import { getBooks, searchBooks } from '@/api/bookApi'
+import { ArchiveRestore, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { getDeletedBooks } from '@/api/bookApi'
 import BookCoverImage from '@/components/books/BookCoverImage'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { resolveBackendFileUrls } from '@/utils/fileUrl'
 
 const pageSize = 10
-
-function formatStatus(status) {
-  const normalized = String(status || '').toUpperCase()
-  if (normalized.includes('BORROW')) return 'Đang mượn'
-  if (normalized.includes('ARCHIVE')) return 'Ngừng lưu hành'
-  if (normalized.includes('MAINTAIN')) return 'Bảo trì'
-  return 'Sẵn sàng'
-}
-
-function MetricCard({ title, value, note, icon: Icon }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_40px_-28px_rgba(15,23,42,0.35)]">
-      <div className="flex items-start justify-between">
-        <p className="text-[13px] font-medium text-slate-500">{title}</p>
-        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-900"><Icon size={18} /></span>
-      </div>
-      <p className="mt-4 text-2xl font-semibold text-slate-950">{value}</p>
-      <p className="mt-1.5 text-[13px] text-emerald-600">{note}</p>
-    </div>
-  )
-}
-
-function BookStatus({ status }) {
-  const styles = {
-    'Sẵn sàng': 'bg-emerald-100 text-emerald-700',
-    'Đang mượn': 'bg-amber-100 text-amber-700',
-    'Bảo trì': 'bg-slate-100 text-slate-700',
-    'Ngừng lưu hành': 'bg-rose-100 text-rose-700',
-  }
-
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[status] || styles['Sẵn sàng']}`}>{status}</span>
-}
 
 function CoverFallback() {
   return (
@@ -55,44 +24,20 @@ function getBookCoverSources(book) {
   return [...new Set([...backendSources, fallbackCoverUrl].filter(Boolean))]
 }
 
-function normalizeText(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-}
-
-function AdminBookManage() {
+function AdminDeletedBookManage() {
   const [books, setBooks] = useState([])
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [keywordInput, setKeywordInput] = useState('')
-  const [keyword, setKeyword] = useState('')
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const nextKeyword = keywordInput.trim()
-      if (normalizeText(nextKeyword) !== normalizeText(keyword)) {
-        setPage(0)
-        setKeyword(nextKeyword)
-      }
-    }, 300)
-
-    return () => window.clearTimeout(timer)
-  }, [keywordInput, keyword])
-
-  async function loadBooks(targetPage = page, targetKeyword = keyword) {
+  async function loadBooks(targetPage = page) {
     try {
       setLoading(true)
       setError('')
 
-      const response = targetKeyword
-        ? await searchBooks({ keyword: targetKeyword, page: targetPage, size: pageSize, sort: 'bookId,asc' })
-        : await getBooks({ page: targetPage, size: pageSize, sort: 'bookId,asc' })
+      const response = await getDeletedBooks({ page: targetPage, size: pageSize, sort: 'bookId,asc' })
       const payload = response.data || {}
 
       setBooks(payload.content || [])
@@ -102,24 +47,15 @@ function AdminBookManage() {
       setBooks([])
       setTotalElements(0)
       setTotalPages(1)
-      setError('Không tải được danh sách sách từ backend.')
+      setError('Không tải được danh sách sách đã xóa mềm từ backend.')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadBooks(page, keyword)
-  }, [page, keyword])
-
-  const metrics = useMemo(() => {
-    const activeCount = books.filter((book) => formatStatus(book.availabilityStatus) === 'Sẵn sàng').length
-    return [
-      { title: 'Tổng số đầu sách', value: totalElements.toLocaleString('vi-VN'), note: `Trang hiện tại: ${page + 1}/${totalPages}`, icon: FileText },
-      { title: 'Đang lưu hành', value: activeCount.toLocaleString('vi-VN'), note: 'Dữ liệu từ backend', icon: BookOpen },
-      { title: 'Hiển thị mỗi trang', value: pageSize.toString(), note: `${books.length.toLocaleString('vi-VN')} bản ghi đang xem`, icon: Layers3 },
-    ]
-  }, [books, page, totalElements, totalPages])
+    loadBooks(page)
+  }, [page])
 
   const pageNumbers = useMemo(() => {
     const start = Math.max(0, Math.min(page - 1, totalPages - 3))
@@ -131,28 +67,22 @@ function AdminBookManage() {
   return (
     <AdminLayout
       active="books"
-      title="Quản lý Thông tin Sách"
-      description="Admin chỉ xem dữ liệu đầu sách, không thực hiện thêm, sửa hoặc xóa."
+      title="Sách Đã Xóa Mềm"
+      description="Admin chỉ xem danh sách đầu sách đã xóa mềm trong hệ thống."
+      action={
+        <Link to="/admin/books" className="inline-flex h-10 items-center gap-2 rounded-2xl bg-slate-950 px-4 text-[13px] font-semibold text-white transition hover:bg-slate-800">
+          <ArchiveRestore size={16} />
+          Quay lại danh sách
+        </Link>
+      }
     >
-      <section className="grid gap-4 xl:grid-cols-3">
-        {metrics.map((metric) => <MetricCard key={metric.title} {...metric} />)}
-      </section>
-
-      <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_40px_-28px_rgba(15,23,42,0.35)]">
-        <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_40px_-28px_rgba(15,23,42,0.35)]">
+        <div className="flex items-center justify-between border-b border-slate-200 p-5">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">Book catalog</p>
-            <h2 className="mt-2 font-serif text-[24px] font-semibold tracking-tight text-slate-950">Danh sách đầu sách</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700">Soft deleted</p>
+            <h2 className="mt-2 font-serif text-[24px] font-semibold tracking-tight text-slate-950">Danh sách đã xóa mềm</h2>
           </div>
-          <label className="flex h-10 items-center gap-2 rounded-2xl border border-slate-300 px-3 text-[13px] text-slate-500">
-            <Search size={15} />
-            <input
-              value={keywordInput}
-              onChange={(event) => setKeywordInput(event.target.value)}
-              className="w-52 bg-transparent outline-none placeholder:text-slate-400"
-              placeholder="Tìm theo tên, ISBN..."
-            />
-          </label>
+          <div className="text-sm text-slate-500">{totalElements.toLocaleString('vi-VN')} đầu sách</div>
         </div>
 
         {error && <div className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">{error}</div>}
@@ -179,16 +109,15 @@ function AdminBookManage() {
                     </tr>
                   ))
                 : books.map((book) => {
-                    const status = formatStatus(book.availabilityStatus)
                     const coverSources = getBookCoverSources(book)
 
                     return (
                       <tr key={book.bookId} className="hover:bg-slate-50/70">
                         <td className="px-5 py-4">
-                          <div className="w-12 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                          <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                             <BookCoverImage
                               src={coverSources}
-                              alt={book.title || 'Ảnh bìa sách'}
+                              alt={book.title || 'Book cover'}
                               className="h-16 w-12 object-cover object-center"
                               fallback={<CoverFallback />}
                             />
@@ -203,13 +132,17 @@ function AdminBookManage() {
                         <td className="px-5 py-4 text-[13px] text-slate-600">BK{String(book.bookId || '').padStart(4, '0')}</td>
                         <td className="px-5 py-4 text-[13px] text-slate-600">{book.author || 'Chưa cập nhật'}</td>
                         <td className="px-5 py-4 text-[13px] text-slate-600">{book.categoryName || 'Chưa phân loại'}</td>
-                        <td className="px-5 py-4"><BookStatus status={status} /></td>
+                        <td className="px-5 py-4">
+                          <span className="inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-[10px] font-semibold text-rose-700">
+                            Đã xóa mềm
+                          </span>
+                        </td>
                       </tr>
                     )
                   })}
               {!loading && books.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-500">Chưa có dữ liệu sách để hiển thị.</td>
+                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-500">Chưa có đầu sách nào trong danh sách đã xóa mềm.</td>
                 </tr>
               )}
             </tbody>
@@ -218,7 +151,7 @@ function AdminBookManage() {
 
         <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 text-[13px] text-slate-600 sm:flex-row sm:items-center sm:justify-between">
           <p>
-            Hiển thị {books.length === 0 ? 0 : page * pageSize + 1} - {Math.min((page + 1) * pageSize, totalElements)} trên tổng số {totalElements.toLocaleString('vi-VN')} đầu sách
+            Hiển thị {books.length === 0 ? 0 : page * pageSize + 1} - {Math.min((page + 1) * pageSize, totalElements)} trên tổng số {totalElements.toLocaleString('vi-VN')} đầu sách đã xóa mềm
           </p>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0 || loading} className="grid h-9 w-9 place-items-center rounded-xl border border-slate-300 bg-white disabled:opacity-50" aria-label="Trang trước"><ChevronLeft size={16} /></button>
@@ -235,4 +168,4 @@ function AdminBookManage() {
   )
 }
 
-export default AdminBookManage
+export default AdminDeletedBookManage
