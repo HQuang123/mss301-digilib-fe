@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2, AlertCircle } from 'lucide-react'
-import useAuthStore from '@/store/authSlice'
+import useAuthStore, { getRoleHomePath } from '@/store/authSlice'
 import { OAUTH_CONFIG } from '@/lib/oauth2'
 import { exchangeOAuth2Code } from '@/api/authApi'
 
@@ -65,8 +65,8 @@ function OAuth2Callback() {
           // Non-fatal, let user continue to home
         }
 
-        // Navigate to dashboard
-        navigate('/', { replace: true })
+        // Navigate to role-appropriate dashboard
+        navigate(getRoleHomePath(useAuthStore.getState().roles), { replace: true })
       } catch (err) {
         console.error('Lỗi trao đổi token:', err)
         setError('Có lỗi xảy ra khi xác thực với máy chủ. Vui lòng thử lại.')

@@ -36,6 +36,12 @@ function isTokenExpired(token) {
   return Date.now() >= (payload.exp - 30) * 1000
 }
 
+export function getRoleHomePath(roles) {
+  if (roles?.includes('admin')) return '/admin'
+  if (roles?.includes('librarian')) return '/librarian'
+  return '/'
+}
+
 // ── Zustand store ───────────────────────────────────────────────────────────
 
 const useAuthStore = create((set, get) => ({

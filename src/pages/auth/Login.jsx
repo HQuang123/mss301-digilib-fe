@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import useAuthStore from '@/store/authSlice'
+import useAuthStore, { getRoleHomePath } from '@/store/authSlice'
 import { generateRandomString, generateCodeChallenge, OAUTH_CONFIG } from '@/lib/oauth2'
 
 function Login() {
@@ -17,7 +17,7 @@ function Login() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated()) {
-      navigate('/', { replace: true })
+      navigate(getRoleHomePath(useAuthStore.getState().roles), { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -28,7 +28,7 @@ function Login() {
 
     try {
       await login(email, password)
-      navigate('/')
+      navigate(getRoleHomePath(useAuthStore.getState().roles))
     } catch (err) {
       const status = err?.response?.status
       switch (status) {
