@@ -94,7 +94,7 @@ function WaiveModal({ fine, onClose, onConfirm }) {
   )
 }
 
-function FineTable({ fines, loading, showStudent, busyFineId, onWaive, onMarkPaid, onViewHistory }) {
+function FineTable({ fines, loading, showStudent, studentMap, busyFineId, onWaive, onMarkPaid, onViewHistory }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[950px] text-left">
@@ -120,8 +120,8 @@ function FineTable({ fines, loading, showStudent, busyFineId, onWaive, onMarkPai
             <tr key={fine.fineId} className="hover:bg-slate-50/70">
               {showStudent && (
                 <td className="px-5 py-4">
-                  <p className="text-[13px] font-semibold text-slate-950">{fine.studentEmail || fine.studentId}</p>
-                  <p className="mt-1 text-[11px] text-slate-500">{fine.studentId}</p>
+                  <p className="text-[13px] font-semibold text-slate-950">{studentMap[fine.studentId]?.name || fine.studentId}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">Email: {studentMap[fine.studentId]?.email || '—'}</p>
                 </td>
               )}
               <td className="px-5 py-4">
@@ -219,6 +219,15 @@ function LibrarianFineLookup() {
     return () => clearTimeout(timer)
   }, [notice])
 
+  const studentMap = useMemo(() => {
+    const map = {}
+    members.forEach((m) => {
+      const fullName = `${m.firstName || ''} ${m.lastName || ''}`.trim()
+      map[String(m.id)] = { name: fullName || m.email, email: m.email }
+    })
+    return map
+  }, [members])
+
   const matchingMembers = useMemo(() => {
     const q = studentQuery.trim().toLowerCase()
     if (!q) return []
@@ -308,6 +317,7 @@ function LibrarianFineLookup() {
             fines={fines}
             loading={loading}
             showStudent={mode === 'triage'}
+            studentMap={studentMap}
             busyFineId={busyFineId}
             onWaive={setWaiveFineTarget}
             onMarkPaid={handleMarkPaid}
