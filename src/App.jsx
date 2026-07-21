@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import useAuthStore from './store/authSlice'
 import PrivateRoute from './routes/PrivateRoute'
 
@@ -64,37 +64,6 @@ function App() {
         <Route path="/books" element={<BookList />} />
         <Route path="/books/:bookId" element={<BookDetail />} />
         <Route path="/about" element={<AboutUs />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/books" element={<AdminBookManage />} />
-        <Route path="/admin/books/deleted" element={<AdminDeletedBookManage />} />
-        <Route path="/admin/books/add" element={<Navigate to="/admin/books" replace />} />
-        <Route path="/admin/books/:bookId/edit" element={<Navigate to="/admin/books" replace />} />
-        <Route path="/admin/digital-books" element={<AdminDigitalBookManage />} />
-        <Route path="/admin/digital-books/add" element={<Navigate to="/admin/digital-books" replace />} />
-        <Route path="/admin/digital-books/:resourceId/edit" element={<Navigate to="/admin/digital-books" replace />} />
-        <Route path="/admin/copies" element={<AdminCopyManage />} />
-        <Route path="/admin/copies/add" element={<Navigate to="/admin/copies" replace />} />
-        <Route path="/admin/copies/:copyId/edit" element={<Navigate to="/admin/copies" replace />} />
-        <Route path="/admin/categories" element={<AdminCategoryManage />} />
-        <Route path="/admin/categories/add" element={<Navigate to="/admin/categories" replace />} />
-        <Route path="/admin/categories/:categoryId/edit" element={<Navigate to="/admin/categories" replace />} />
-        <Route path="/admin/classifications" element={<AdminClassificationManage />} />
-        <Route path="/librarian" element={<LibrarianDashboard />} />
-        <Route path="/librarian/books" element={<LibrarianBookCatalog />} />
-        <Route path="/librarian/books/add" element={<LibrarianBookForm mode="add" />} />
-        <Route path="/librarian/books/:bookId/edit" element={<LibrarianBookForm mode="edit" />} />
-        <Route path="/librarian/inventory" element={<LibrarianInventory />} />
-        <Route path="/librarian/inventory/add" element={<LibrarianInventoryForm mode="add" />} />
-        <Route path="/librarian/inventory/:copyId/edit" element={<LibrarianInventoryForm mode="edit" />} />
-        <Route path="/librarian/digital-books" element={<LibrarianDigitalBooks />} />
-        <Route path="/librarian/digital-books/add" element={<LibrarianDigitalBookForm mode="add" />} />
-        <Route path="/librarian/digital-books/:resourceId/edit" element={<LibrarianDigitalBookForm mode="edit" />} />
-        <Route path="/librarian/genres" element={<LibrarianGenres />} />
-        <Route path="/librarian/genres/add" element={<LibrarianGenreForm mode="add" />} />
-        <Route path="/librarian/genres/:genreId/edit" element={<LibrarianGenreForm mode="edit" />} />
-        <Route path="/librarian/classifications" element={<LibrarianClassifications />} />
-        <Route path="/librarian/classifications/add" element={<LibrarianClassificationForm mode="add" />} />
-        <Route path="/librarian/classifications/:classificationId/edit" element={<LibrarianClassificationForm mode="edit" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
@@ -109,6 +78,7 @@ function App() {
         {/* ── Admin routes ────────────────────────────────────────── */}
         <Route path="/admin" element={<PrivateRoute requiredRoles={['admin']}><AdminDashboard /></PrivateRoute>} />
         <Route path="/admin/books" element={<PrivateRoute requiredRoles={['admin']}><AdminBookManage /></PrivateRoute>} />
+        <Route path="/admin/books/deleted" element={<PrivateRoute requiredRoles={['admin']}><AdminDeletedBookManage /></PrivateRoute>} />
         <Route path="/admin/books/add" element={<PrivateRoute requiredRoles={['admin']}><AdminBookForm mode="add" /></PrivateRoute>} />
         <Route path="/admin/books/:bookId/edit" element={<PrivateRoute requiredRoles={['admin']}><AdminBookForm mode="edit" /></PrivateRoute>} />
         <Route path="/admin/digital-books" element={<PrivateRoute requiredRoles={['admin']}><AdminDigitalBookManage /></PrivateRoute>} />
