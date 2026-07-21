@@ -65,6 +65,17 @@ function OAuth2Callback() {
           // Non-fatal, let user continue to home
         }
 
+        // Federated (Google) users go through the same onboarding gate as
+        // email/password registrants: if their JWT carries no onboarded realm
+        // role, send them to /onboarding instead of the home page so they pick
+        // student/lecturer.  Protected endpoints would otherwise 403 anyway.
+        const roles = useAuthStore.getState().roles
+        const ONBOARDED = ['student', 'lecturer', 'librarian', 'admin']
+        if (!roles.some((r) => ONBOARDED.includes(r))) {
+          navigate('/onboarding?reason=forced', { replace: true })
+          return
+        }
+
         // Navigate to dashboard
         navigate('/', { replace: true })
       } catch (err) {

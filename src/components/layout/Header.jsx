@@ -1,5 +1,6 @@
-import { Bell, CircleUserRound, Compass, Menu } from 'lucide-react'
+import { Bell, CircleUserRound, Compass, LogOut, Menu } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import useAuthStore from '@/store/authSlice'
 import { Button } from '@/components/ui/button'
 
 const navItems = [
@@ -10,6 +11,13 @@ const navItems = [
 ]
 
 function Header() {
+  const { user, roles, accessToken, logout } = useAuthStore()
+
+  const handleLogout = () => {
+    logout()
+    window.location.href = '/'
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/82 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -40,7 +48,7 @@ function Header() {
         </nav>
 
         <div className="hidden items-center gap-1.5 md:flex">
-          {isLoggedIn ? (
+          {accessToken ? (
             <>
               <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Thông báo">
                 <Bell size={16} />

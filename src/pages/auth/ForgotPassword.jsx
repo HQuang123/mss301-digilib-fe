@@ -19,12 +19,12 @@ function ForgotPassword() {
       await authApi.forgotPassword(email)
       setSuccess(true)
     } catch (err) {
+      // The backend always returns 202 Accepted regardless of whether the
+      // email is registered (closes the user-enumeration oracle).  Reaching
+      // this catch branch means the request itself failed (network, 429, 5xx);
+      // surface a generic message and never reveal whether the email exists.
       const status = err?.response?.status
-      if (status === 404) {
-        // Technically, for security reasons, it's better to NOT reveal if an email exists.
-        // But if the backend sends 404, we can handle it or show a generic message.
-        setError('Không tìm thấy tài khoản với email này.')
-      } else if (status === 429) {
+      if (status === 429) {
         setError('Quá nhiều yêu cầu. Vui lòng thử lại sau.')
       } else {
         setError('Có lỗi xảy ra. Vui lòng thử lại sau.')
@@ -68,9 +68,10 @@ function ForgotPassword() {
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
                 <CheckCircle2 size={24} />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Kiểm tra email</h3>
+              <h3 className="text-lg font-bold text-slate-900">Yêu cầu đã được gửi</h3>
               <p className="mt-2 text-sm text-slate-600">
-                Chúng tôi đã gửi một liên kết đặt lại mật khẩu đến <strong>{email}</strong>. Vui lòng kiểm tra hộp thư của bạn (bao gồm cả thư rác).
+                Nếu email <strong>{email}</strong> đã được đăng ký, bạn sẽ nhận được liên kết đặt lại
+                mật khẩu trong vài phút. Vui lòng kiểm tra hộp thư (bao gồm cả thư rác).
               </p>
               <Link
                 to="/login"

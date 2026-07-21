@@ -171,6 +171,32 @@ const useAuthStore = create((set, get) => ({
       set({ loading: false })
     }
   },
+
+  // ── Onboarding ────────────────────────────────────────────────────────
+  // Calls PATCH /api/v1/members/me/role.  The backend updates Keycloak realm
+  // roles AND the profile.memberType column, but the JWT in localStorage is
+  // NOT refreshed by this call — Keycloak only re-evaluates realm roles when
+  // minting a new access token.  We optimistically add the role to the local
+  // `roles` array so PrivateRoute / Header UI updates immediately; the user
+  // must still re-login (or refresh their token via Keycloak's token endpoint)
+  // before the gateway stops returning 403 ONBOARDING_REQUIRED on protected
+  // endpoints.
+  selectRole: async (role) => {
+    set({ loading: true })
+    try {
+      const res = await memberApi.selectRole(role)
+      // Mirror the role locally so the UI reflects the choice without
+      // requiring a full JWT re-decode (the JWT won't contain the new role
+      // until the next login).
+      set((state) => ({
+        roles: state.roles.includes(role) ? state.roles : [...state.roles, role],
+        user: res.data,
+      }))
+      return res.data
+    } finally {
+      set({ loading: false })
+    }
+  },
 }))
 
 export default useAuthStore
