@@ -116,7 +116,6 @@ function AdminLayout({ active = 'dashboard', title, description, action, childre
 
   async function handleLogout() {
     await logout()
-    navigate('/login')
   }
 
   return (

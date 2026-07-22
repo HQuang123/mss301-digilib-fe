@@ -121,7 +121,6 @@ function LibrarianLayout({ active = 'dashboard', title, description, action, chi
 
   async function handleLogout() {
     await logout()
-    navigate('/login')
   }
 
   return (

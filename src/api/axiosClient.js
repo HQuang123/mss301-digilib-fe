@@ -21,20 +21,34 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-// ── Response interceptor: handle 401 → auto-logout ─────────────────────────
+// ── Response interceptor: handle 401 → auto-logout, 403 ONBOARDING_REQUIRED → /onboarding ─
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const url = error.config?.url || ''
+    const code = error.response?.data?.code
+
+    if (status === 401) {
       // Skip auto-logout for unauthenticated auth endpoints (login, register, oauth2/exchange)
-      const url = error.config?.url || ''
       if (!url.includes('/auth/')) {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         // Redirect to login — using window.location to break out of React Router
         window.location.href = '/login'
       }
+    } else if (
+      status === 403 &&
+      code === 'ONBOARDING_REQUIRED' &&
+      !url.includes('/auth/') &&
+      !window.location.pathname.startsWith('/onboarding')
+    ) {
+      // The gateway's OnboardingRequiredFilter blocks authenticated-but-not-onboarded
+      // users from every protected endpoint.  Redirect them to the role-choice page
+      // (using window.location to break out of React Router and avoid loops).
+      window.location.href = '/onboarding?reason=forced'
     }
+
     return Promise.reject(error)
   },
 )

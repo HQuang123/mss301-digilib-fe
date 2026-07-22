@@ -79,15 +79,32 @@ function Register() {
       navigate('/verify-email')
     } catch (err) {
       const status = err?.response?.status
+      const code = err?.response?.data?.code
+      const backendMessage = err?.response?.data?.message
       switch (status) {
         case 409:
           setError('Email này đã được đăng ký.')
           break
         case 400:
-          setError('Thông tin không hợp lệ. Vui lòng kiểm tra lại.')
+          if (code === 'PASSWORD_POLICY_VIOLATION') {
+            setError('Mật khẩu không đáp ứng chính sách bảo mật. Vui lòng chọn mật khẩu mạnh hơn.')
+          } else if (code === 'INVALID_PASSWORD') {
+            setError('Mật khẩu không hợp lệ.')
+          } else {
+            setError('Thông tin không hợp lệ. Vui lòng kiểm tra lại.')
+          }
+          break
+        case 503:
+          // Backend returns 503 when Keycloak is unavailable or the service
+          // account can't create users — show the backend's structured
+          // message so the operator/user sees the actual cause.
+          setError(backendMessage || 'Dịch vụ xác thực tạm thời không khả dụng. Vui lòng thử lại sau.')
+          break
+        case 500:
+          setError(backendMessage || 'Lỗi máy chủ khi đăng ký. Vui lòng thử lại sau.')
           break
         default:
-          setError('Đăng ký không thành công. Vui lòng thử lại.')
+          setError(backendMessage || 'Đăng ký không thành công. Vui lòng thử lại.')
       }
     } finally {
       setLoading(false)

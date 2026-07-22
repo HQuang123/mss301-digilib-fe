@@ -1,9 +1,47 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2, AlertCircle } from 'lucide-react'
-import useAuthStore, { getRoleHomePath } from '@/store/authSlice'
+import useAuthStore from '@/store/authSlice'
 import { OAUTH_CONFIG } from '@/lib/oauth2'
 import { exchangeOAuth2Code } from '@/api/authApi'
+
+// Surfaces the actual backend error code returned by AuthService so the user
+// (or developer) sees the real reason the Google login failed instead of a
+// generic "Có lỗi xảy ra...". Maps backend error codes to Vietnamese copy.
+function describeExchangeError(err) {
+  const status = err?.response?.status
+  const code = err?.response?.data?.code
+  const backendMessage = err?.response?.data?.message
+
+  if (!err.response) {
+    return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.'
+  }
+  switch (status) {
+    case 401:
+      if (code === 'INVALID_CREDENTIALS') {
+        return 'Mã xác thực không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại bằng Google.'
+      }
+      return 'Phiên xác thực không hợp lệ. Vui lòng quay lại trang đăng nhập và thử lại.'
+    case 403:
+      if (code === 'EMAIL_NOT_VERIFIED') {
+        return 'Tài khoản Google của bạn chưa được xác minh email. Vui lòng hoàn tất xác minh trong Google và thử lại.'
+      }
+      if (code === 'ACCOUNT_SETUP_INCOMPLETE') {
+        return 'Tài khoản chưa được thiết lập đầy đủ. Vui lòng liên hệ quản trị viên.'
+      }
+      if (code === 'ACCOUNT_DISABLED') {
+        return 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.'
+      }
+      return 'Tài khoản không thể đăng nhập. Vui lòng liên hệ quản trị viên.'
+    case 429:
+      return 'Quá nhiều lần thử đăng nhập. Vui lòng đợi trước khi thử lại.'
+    case 502:
+    case 503:
+      return 'Dịch vụ xác thực (Keycloak) tạm thời không khả dụng (502/503). Vui lòng thử lại sau.'
+    default:
+      return backendMessage || 'Có lỗi xảy ra khi xác thực với máy chủ. Vui lòng thử lại.'
+  }
+}
 
 function OAuth2Callback() {
   const [searchParams] = useSearchParams()
@@ -48,14 +86,14 @@ function OAuth2Callback() {
       try {
         const res = await exchangeOAuth2Code(code, savedVerifier, OAUTH_CONFIG.redirectUri)
 
-        const { access_token, refresh_token } = res.data
+        const { access_token, refresh_token, id_token, idToken } = res.data
 
         // Clear PKCE storage
         sessionStorage.removeItem('oauth_state')
         sessionStorage.removeItem('oauth_code_verifier')
 
         // Dispatch to store
-        useAuthStore.getState().setTokens(access_token, refresh_token)
+        useAuthStore.getState().setTokens(access_token, refresh_token, id_token || idToken)
 
         // Trigger JIT profile generation / fetch
         try {
@@ -65,11 +103,22 @@ function OAuth2Callback() {
           // Non-fatal, let user continue to home
         }
 
-        // Navigate to role-appropriate dashboard
-        navigate(getRoleHomePath(useAuthStore.getState().roles), { replace: true })
+        // Federated (Google) users go through the same onboarding gate as
+        // email/password registrants: if their JWT carries no onboarded realm
+        // role, send them to /onboarding instead of the home page so they pick
+        // student/lecturer.  Protected endpoints would otherwise 403 anyway.
+        const roles = useAuthStore.getState().roles
+        const ONBOARDED = ['student', 'lecturer', 'librarian', 'admin']
+        if (!roles.some((r) => ONBOARDED.includes(r))) {
+          navigate('/onboarding?reason=forced', { replace: true })
+          return
+        }
+
+        // Navigate to dashboard
+        navigate('/', { replace: true })
       } catch (err) {
         console.error('Lỗi trao đổi token:', err)
-        setError('Có lỗi xảy ra khi xác thực với máy chủ. Vui lòng thử lại.')
+        setError(describeExchangeError(err))
       }
     }
 

@@ -12,6 +12,7 @@ import {
   Check,
   X,
   Loader2,
+  LogOut
 } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
@@ -74,6 +75,9 @@ function formatCurrency(amount) {
 // ── Skeleton ────────────────────────────────────────────────────────────────
 
 function ProfileSkeleton() {
+
+
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* Header card skeleton */}
@@ -225,6 +229,11 @@ function Profile() {
     } finally {
       setSaving(false)
     }
+  }
+  const { logout } = useAuthStore()
+
+  const handleLogout = async () => {
+    await logout()
   }
 
   // Show skeleton while initializing or loading user
@@ -443,6 +452,18 @@ function Profile() {
             </div>
           </div>
         </div>
+
+                  {/* LOGOUT */}
+          <div className="mt-6 flex justify-center">
+            <Button
+              variant="destructive"
+              className="rounded-2xl px-3 text-red-600 hover:bg-red-50 hover:text-red-700 w-full border border-red-600"
+              onClick={handleLogout}
+            >
+              <LogOut size={14} />
+              Đăng xuất
+            </Button>
+          </div>
       </main>
 
       <Footer />

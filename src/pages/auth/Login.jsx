@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { Loader2, CheckCircle2 } from 'lucide-react'
 import useAuthStore, { getRoleHomePath } from '@/store/authSlice'
 import { generateRandomString, generateCodeChallenge, OAUTH_CONFIG } from '@/lib/oauth2'
 
 function Login() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const login = useAuthStore((s) => s.login)
 
@@ -13,6 +14,8 @@ function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const onboardedNotice = searchParams.get('reason') === 'onboarded'
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -28,16 +31,37 @@ function Login() {
 
     try {
       await login(email, password)
-      navigate(getRoleHomePath(useAuthStore.getState().roles))
+      // Email/password users go through the same onboarding gate as federated
+      // users: if the freshly issued JWT carries no onboarded realm role
+      // (student/lecturer/librarian/admin) the gateway will 403 on every
+      // protected endpoint anyway — send them to /onboarding directly so the
+      // next call they make is the role-select PATCH, not a protected GET.
+      const ONBOARDED = ['student', 'lecturer', 'librarian', 'admin']
+      const roles = useAuthStore.getState().roles
+      if (!roles.some((r) => ONBOARDED.includes(r))) {
+        navigate('/onboarding?reason=forced', { replace: true })
+        return
+      }
+      navigate('/')
     } catch (err) {
       const status = err?.response?.status
+      const code = err?.response?.data?.code
       switch (status) {
         case 401:
           setError('Email hoặc mật khẩu không chính xác.')
           break
         case 403:
-          navigate('/verify-email')
-          return
+          // Backend login endpoint can return 403 with EMAIL_NOT_VERIFIED —
+          // route the user to the verification notice page so they check their
+          // inbox.  ONBOARDING_REQUIRED is never returned by /login itself
+          // (the gateway's OnboardingRequiredFilter only fires on protected
+          // paths); axiosClient handles it globally.
+          if (code === 'EMAIL_NOT_VERIFIED') {
+            navigate('/verify-email')
+            return
+          }
+          setError('Tài khoản của bạn không thể đăng nhập. Vui lòng liên hệ quản trị viên.')
+          break
         case 429:
           setError('Quá nhiều lần thử. Vui lòng đợi trước khi thử lại.')
           break
@@ -69,6 +93,7 @@ function Login() {
     authUrl.searchParams.append('code_challenge', codeChallenge)
     authUrl.searchParams.append('code_challenge_method', 'S256')
     authUrl.searchParams.append('state', state)
+    authUrl.searchParams.append('prompt', 'select_account')
 
     // Redirect to Keycloak/Google
     window.location.href = authUrl.toString()
@@ -103,6 +128,16 @@ function Login() {
             </div>
           )}
 
+          {onboardedNotice && !error && (
+            <div className="mt-8 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+              <span>
+                Vai trò của bạn đã được cập nhật. Vui lòng đăng nhập lại để kích hoạt quyền truy
+                cập mới.
+              </span>
+            </div>
+          )}
+
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="text-sm font-bold tracking-wide text-slate-900">
@@ -126,9 +161,9 @@ function Login() {
                 <label htmlFor="password" className="text-sm font-bold tracking-wide text-slate-900">
                   Mật khẩu
                 </label>
-                <a href="#" className="text-sm font-bold text-slate-950 underline-offset-4 hover:underline">
+                <Link to="/forgot-password" className="text-sm font-bold text-slate-950 underline-offset-4 hover:underline">
                   Quên mật khẩu?
-                </a>
+                </Link>
               </div>
               <input
                 id="password"

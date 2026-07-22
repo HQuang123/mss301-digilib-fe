@@ -8,7 +8,10 @@ import Home from './pages/dashboard/Home'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import VerifyEmail from './pages/auth/VerifyEmail'
+import ForgotPassword from './pages/auth/ForgotPassword'
 import OAuth2Callback from './pages/auth/OAuth2Callback'
+import Onboarding from './pages/auth/Onboarding'
+import ResetPassword from './pages/auth/ResetPassword'
 import BookList from './pages/books/BookList'
 import BookDetail from './pages/books/BookDetail'
 import AboutUs from './pages/books/AboutUs'
@@ -66,10 +69,18 @@ function App() {
         <Route path="/books" element={<BookList />} />
         <Route path="/books/:bookId" element={<BookDetail />} />
         <Route path="/about" element={<AboutUs />} />
+        {/* NOTE: admin/librarian routes are intentionally NOT declared here as
+            public. Earlier versions shadowed the protected versions below with
+            public <Route> declarations, which made React Router v6 pick the
+            public match first and bypass PrivateRoute's role check. The
+            protected declarations further down are the only ones that exist. */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/oauth2/callback" element={<OAuth2Callback />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* ── Authenticated (any role) ────────────────────────────── */}
         <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
