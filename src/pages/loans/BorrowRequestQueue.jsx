@@ -8,6 +8,7 @@ import AdminLayout from '@/components/layout/AdminLayout'
 import useAuthStore from '@/store/authSlice'
 import { createBookNameMap } from '@/utils/book'
 import { createMemberNameMap } from '@/utils/member'
+import { getLoanStatusLabel, LOAN_STATUS_LABELS } from '@/utils/loanStatus'
 
 function messageOf(error, fallback) {
   return error?.response?.data?.message || fallback
@@ -59,7 +60,7 @@ function BorrowRequestQueue() {
     try {
       const response = await approveBorrowRequest(request.requestId)
       setRequests((items) => items.filter((item) => item.requestId !== request.requestId))
-      setNotice(`Loan #${response.data.loanId} đã chuyển từ PENDING sang BORROWED.`)
+      setNotice(`Phiếu mượn #${response.data.loanId} đã chuyển từ chờ duyệt sang đang mượn.`)
     } catch (requestError) {
       setError(messageOf(requestError, 'Không thể duyệt yêu cầu. Hãy kiểm tra khoản phạt, hạn mức và bản sao sách.'))
     } finally {
@@ -87,13 +88,13 @@ function BorrowRequestQueue() {
     <ReviewLayout
       active="borrow-requests"
       title="Yêu cầu mượn sách"
-      description="Duyệt Loan PENDING thành BORROWED hoặc chuyển sang REJECTED. Fine, hạn mức và bản sao chỉ được kiểm tra khi duyệt."
+      description="Duyệt yêu cầu thành phiếu đang mượn hoặc chuyển sang trạng thái đã từ chối. Khoản phạt, hạn mức và bản sao sách được kiểm tra khi duyệt."
       action={<button onClick={load} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-semibold"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} />Làm mới</button>}
     >
       {notice && <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{notice}</div>}
       {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       <div className="mb-4 flex flex-wrap gap-2">
-        {[['PENDING', 'Chờ duyệt'], ['BORROWED', 'Đang mượn'], ['OVERDUE', 'Quá hạn'], ['RETURNED', 'Đã trả'], ['LOST', 'Đã mất'], ['REJECTED', 'Đã từ chối'], ['CANCELLED', 'Đã hủy']].map(([value, label]) => <button key={value} onClick={() => setStatusFilter(value)} className={`rounded-full px-4 py-2 text-xs font-semibold ${statusFilter === value ? 'bg-slate-950 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}>{label}</button>)}
+        {['PENDING', 'BORROWED', 'OVERDUE', 'RETURNED', 'LOST', 'REJECTED', 'CANCELLED'].map((value) => <button key={value} onClick={() => setStatusFilter(value)} className={`rounded-full px-4 py-2 text-xs font-semibold ${statusFilter === value ? 'bg-slate-950 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}>{LOAN_STATUS_LABELS[value]}</button>)}
       </div>
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[850px] text-left">
@@ -106,7 +107,7 @@ function BorrowRequestQueue() {
                 <td className="px-5 py-4 text-sm font-medium">{memberNames.get(String(request.memberId)) || 'Chưa có tên'}</td>
                 <td className="px-5 py-4 text-sm font-semibold">{bookNames.get(String(request.bookId)) || 'Chưa có tên sách'}</td>
                 <td className="px-5 py-4 text-sm">{request.bookType}</td>
-                <td className="px-5 py-4"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{request.status}</span></td>
+                <td className="px-5 py-4"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{getLoanStatusLabel(request.status)}</span></td>
                 <td className="px-5 py-4 text-sm">{new Date(request.requestedAt).toLocaleString('vi-VN')}</td>
                 <td className="px-5 py-4"><div className="flex justify-end gap-2">
                   {request.status === 'PENDING' ? <><button onClick={() => reject(request)} disabled={busyId === request.requestId} className="inline-flex h-9 items-center gap-1 rounded-xl border border-red-200 px-3 text-xs font-semibold text-red-700"><X size={14} />Từ chối</button><button onClick={() => approve(request)} disabled={busyId === request.requestId} className="inline-flex h-9 items-center gap-1 rounded-xl bg-slate-950 px-3 text-xs font-semibold text-white">{busyId === request.requestId ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}Duyệt</button></> : <span className="text-xs text-slate-400">Đã xử lý</span>}

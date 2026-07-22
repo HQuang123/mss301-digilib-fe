@@ -18,6 +18,9 @@ export const renewLoan = (loanId) =>
 export const createBorrowRequest = ({ bookId, bookType = 'PHYSICAL', idempotencyKey }) =>
   axiosClient.post('/api/v1/borrow-requests', { bookId, bookType, idempotencyKey })
 
+export const checkBorrowEligibility = () =>
+  axiosClient.get('/api/v1/borrow-requests/eligibility')
+
 export const getMyBorrowRequests = ({ page = 0, size = 20 } = {}) =>
   axiosClient.get('/api/v1/borrow-requests/me', { params: { page, size } })
 

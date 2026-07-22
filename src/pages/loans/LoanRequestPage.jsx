@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BookOpen, Check, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react'
+import { BookOpen, Check, ChevronLeft, ChevronRight, Loader2, Search, ShieldCheck } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { getBookById, getBooks, searchBooks } from '@/api/bookApi'
-import { createBorrowRequest, getMyBorrowRequests } from '@/api/loanApi'
+import { checkBorrowEligibility, createBorrowRequest, getMyBorrowRequests } from '@/api/loanApi'
 import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
 import { createBookNameMap } from '@/utils/book'
@@ -31,6 +31,8 @@ function LoanRequestPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [checkingEligibility, setCheckingEligibility] = useState(false)
+  const [eligibility, setEligibility] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
@@ -79,7 +81,7 @@ function LoanRequestPage() {
   }
 
   async function submitRequest() {
-    if (!selectedBook?.bookId) return
+    if (!selectedBook?.bookId || !eligibility?.eligible) return
     setSubmitting(true)
     setError('')
     setNotice('')
@@ -90,12 +92,29 @@ function LoanRequestPage() {
         idempotencyKey: `loan-request-${selectedBook.bookId}-${Date.now()}`,
       })
       setRequests((current) => [response.data, ...current])
-      setNotice(`Loan #${response.data.requestId} đã được tạo ở trạng thái PENDING và đang chờ duyệt.`)
+      setNotice(`Yêu cầu mượn #${response.data.requestId} đã được tạo và đang chờ duyệt.`)
       setSelectedBook(null)
+      setEligibility(null)
     } catch (requestError) {
       setError(messageOf(requestError, 'Không thể tạo yêu cầu mượn. Bạn có thể đã có yêu cầu đang chờ cho sách này.'))
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function checkEligibility() {
+    setCheckingEligibility(true)
+    setEligibility(null)
+    setError('')
+    setNotice('')
+    try {
+      const response = await checkBorrowEligibility()
+      setEligibility(response.data)
+      setNotice('Bạn đủ điều kiện tạo yêu cầu mượn sách.')
+    } catch (requestError) {
+      setError(messageOf(requestError, 'Bạn chưa đủ điều kiện mượn sách. Vui lòng kiểm tra khoản phạt và hạn mức.'))
+    } finally {
+      setCheckingEligibility(false)
     }
   }
 
@@ -122,15 +141,15 @@ function LoanRequestPage() {
               {loading ? Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-44 animate-pulse rounded-xl bg-slate-100" />) : books.map((book) => {
                 const pending = pendingBookIds.has(Number(book.bookId))
                 const selected = selectedBook?.bookId === book.bookId
-                return <button type="button" key={book.bookId} onClick={() => !pending && setSelectedBook(book)} disabled={pending} className={`min-h-44 rounded-xl border p-4 text-left transition ${selected ? 'border-slate-950 bg-slate-50 ring-2 ring-slate-200' : 'border-slate-200 hover:border-slate-400'} disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60`}><BookOpen size={20} className="text-sky-700" /><h2 className="mt-4 line-clamp-2 font-serif text-base font-semibold">{book.title}</h2><p className="mt-2 line-clamp-1 text-xs text-slate-500">{book.author || 'Chưa cập nhật tác giả'}</p><p className={`mt-4 text-xs font-semibold ${pending ? 'text-amber-700' : 'text-emerald-700'}`}>{pending ? 'Đã có Loan PENDING' : 'Chọn sách này'}</p></button>
+                return <button type="button" key={book.bookId} onClick={() => { if (!pending) { setSelectedBook(book); setEligibility(null); setError(''); setNotice('') } }} disabled={pending} className={`min-h-44 rounded-xl border p-4 text-left transition ${selected ? 'border-slate-950 bg-slate-50 ring-2 ring-slate-200' : 'border-slate-200 hover:border-slate-400'} disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60`}><BookOpen size={20} className="text-sky-700" /><h2 className="mt-4 line-clamp-2 font-serif text-base font-semibold">{book.title}</h2><p className="mt-2 line-clamp-1 text-xs text-slate-500">{book.author || 'Chưa cập nhật tác giả'}</p><p className={`mt-4 text-xs font-semibold ${pending ? 'text-amber-700' : 'text-emerald-700'}`}>{pending ? 'Đã có yêu cầu chờ duyệt' : 'Chọn sách này'}</p></button>
               })}
             </div>
             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-500"><span>Trang {page + 1}/{totalPages}</span><div className="flex gap-2"><button onClick={() => setPage((value) => Math.max(value - 1, 0))} disabled={page === 0 || loading} className="grid h-9 w-9 place-items-center rounded-xl border border-slate-300 disabled:opacity-40"><ChevronLeft size={16} /></button><button onClick={() => setPage((value) => Math.min(value + 1, totalPages - 1))} disabled={page >= totalPages - 1 || loading} className="grid h-9 w-9 place-items-center rounded-xl border border-slate-300 disabled:opacity-40"><ChevronRight size={16} /></button></div></div>
           </section>
 
           <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-20">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Loan request</p><h2 className="mt-2 font-serif text-xl font-semibold">Xác nhận yêu cầu</h2>
-            {selectedBook ? <><div className="mt-5 rounded-xl bg-slate-50 p-4"><p className="text-sm font-semibold">{selectedBook.title}</p><p className="mt-1 text-xs text-slate-500">Book ID: {selectedBook.bookId}</p></div><fieldset className="mt-5"><legend className="text-sm font-semibold">Loại mượn</legend><div className="mt-2 grid grid-cols-2 gap-2">{['PHYSICAL', 'DIGITAL'].map((type) => <label key={type} className={`cursor-pointer rounded-xl border p-3 text-xs font-semibold ${bookType === type ? 'border-slate-950 bg-slate-50' : 'border-slate-200'}`}><input type="radio" className="mr-2" checked={bookType === type} onChange={() => setBookType(type)} />{type === 'PHYSICAL' ? 'Sách vật lý' : 'Sách số'}</label>)}</div></fieldset><button onClick={submitRequest} disabled={submitting} className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 text-sm font-semibold text-white disabled:opacity-50">{submitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}{submitting ? 'Đang gửi...' : 'Gửi yêu cầu PENDING'}</button></> : <p className="mt-5 rounded-xl bg-slate-50 p-5 text-sm leading-6 text-slate-500">Chọn một cuốn sách trong danh mục để tạo yêu cầu.</p>}
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Yêu cầu mượn</p><h2 className="mt-2 font-serif text-xl font-semibold">Xác nhận yêu cầu</h2>
+            {selectedBook ? <><div className="mt-5 rounded-xl bg-slate-50 p-4"><p className="text-sm font-semibold">{selectedBook.title}</p><p className="mt-1 text-xs text-slate-500">Mã sách: {selectedBook.bookId}</p></div><fieldset className="mt-5"><legend className="text-sm font-semibold">Loại mượn</legend><div className="mt-2 grid grid-cols-2 gap-2">{['PHYSICAL', 'DIGITAL'].map((type) => <label key={type} className={`cursor-pointer rounded-xl border p-3 text-xs font-semibold ${bookType === type ? 'border-slate-950 bg-slate-50' : 'border-slate-200'}`}><input type="radio" className="mr-2" checked={bookType === type} onChange={() => { setBookType(type); setEligibility(null) }} />{type === 'PHYSICAL' ? 'Sách vật lý' : 'Sách số'}</label>)}</div></fieldset><button onClick={checkEligibility} disabled={checkingEligibility} className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 disabled:opacity-50">{checkingEligibility ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}{checkingEligibility ? 'Đang kiểm tra...' : 'Kiểm tra điều kiện mượn'}</button>{eligibility?.eligible && <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-800"><p className="font-semibold">Đủ điều kiện mượn</p><p>Đang mượn/quá hạn: {eligibility.activeLoans}/{eligibility.borrowingLimit}</p><p>Còn lại: {eligibility.remainingSlots} lượt · Thời hạn: {eligibility.loanPeriodDays} ngày</p></div>}<button onClick={submitRequest} disabled={submitting || !eligibility?.eligible} className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">{submitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}{submitting ? 'Đang gửi...' : eligibility?.eligible ? 'Gửi yêu cầu chờ duyệt' : 'Kiểm tra trước khi gửi'}</button></> : <p className="mt-5 rounded-xl bg-slate-50 p-5 text-sm leading-6 text-slate-500">Chọn một cuốn sách trong danh mục để tạo yêu cầu.</p>}
           </aside>
         </div>
 
