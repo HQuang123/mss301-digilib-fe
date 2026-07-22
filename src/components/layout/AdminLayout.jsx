@@ -7,6 +7,7 @@ import {
   ChevronRight,
   CircleHelp,
   Clock3,
+  ClipboardList,
   Grid2X2,
   LogOut,
   UsersRound,
@@ -17,6 +18,7 @@ import useAuthStore from '@/store/authSlice'
 const navItems = [
   { key: 'dashboard', label: 'Dashboard', icon: Grid2X2, to: '/admin' },
   { key: 'users', label: 'Người dùng', icon: UsersRound, to: '/admin/members' },
+  { key: 'borrow-requests', label: 'Yêu cầu mượn', icon: ClipboardList, to: '/admin/borrow-requests' },
   { key: 'reports', label: 'Báo cáo', icon: BarChart3, to: '#reports' },
   { key: 'logs', label: 'Nhật ký', icon: Clock3, to: '#logs' },
 ]

@@ -11,15 +11,27 @@ import {
   RotateCcw,
   Search,
 } from 'lucide-react'
-import { getLoansByMember, renewLoan } from '@/api/loanApi'
+import { cancelBorrowRequest, getLoansByMember, getMyBorrowRequests, renewLoan } from '@/api/loanApi'
 import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
 import useAuthStore from '@/store/authSlice'
+import { Link } from 'react-router-dom'
 
 const STATUS_META = {
   BORROWED: { label: 'Đang mượn', classes: 'bg-blue-50 text-blue-700 ring-blue-600/10' },
   OVERDUE: { label: 'Quá hạn', classes: 'bg-red-50 text-red-700 ring-red-600/10' },
   RETURNED: { label: 'Đã trả', classes: 'bg-emerald-50 text-emerald-700 ring-emerald-600/10' },
+  LOST: { label: 'Đã mất', classes: 'bg-amber-50 text-amber-700 ring-amber-600/10' },
+}
+
+const REQUEST_STATUS_LABEL = {
+  PENDING: 'Đang chờ duyệt',
+  BORROWED: 'Đã duyệt',
+  REJECTED: 'Đã từ chối',
+  CANCELLED: 'Đã hủy',
+  OVERDUE: 'Đã duyệt · Quá hạn',
+  RETURNED: 'Đã duyệt · Đã trả',
+  LOST: 'Đã duyệt · Đã mất',
 }
 
 function formatDate(value) {
@@ -54,18 +66,19 @@ function LoanHistory() {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [busyLoanId, setBusyLoanId] = useState(null)
+  const [borrowRequests, setBorrowRequests] = useState([])
   const memberId = user?.id || user?.memberCode
 
   const loadLoans = useCallback(async () => {
-    if (!memberId) {
-      setLoading(false)
-      return
-    }
     setLoading(true)
     setError('')
     try {
-      const response = await getLoansByMember(memberId)
-      setLoans(Array.isArray(response.data) ? response.data : [])
+      const [loanResponse, requestResponse] = await Promise.all([
+        memberId ? getLoansByMember() : Promise.resolve({ data: [] }),
+        getMyBorrowRequests({ size: 50 }),
+      ])
+      setLoans(Array.isArray(loanResponse.data) ? loanResponse.data : [])
+      setBorrowRequests(requestResponse.data?.content || [])
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Không thể tải lịch sử mượn sách. Vui lòng thử lại.')
     } finally {
@@ -105,11 +118,25 @@ function LoanHistory() {
     setBusyLoanId(loan.loanId)
     setError('')
     try {
-      const response = await renewLoan(loan.loanId, memberId)
+      const response = await renewLoan(loan.loanId)
       setLoans((current) => current.map((item) => item.loanId === loan.loanId ? response.data : item))
       setNotice(`Phiếu #${loan.loanId} đã được gia hạn thêm 14 ngày.`)
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Không thể gia hạn khoản mượn này.')
+    } finally {
+      setBusyLoanId(null)
+    }
+  }
+
+  async function handleCancelRequest(requestId) {
+    if (!window.confirm(`Hủy yêu cầu mượn #${requestId}?`)) return
+    setBusyLoanId(`request-${requestId}`)
+    try {
+      const response = await cancelBorrowRequest(requestId)
+      setBorrowRequests((items) => items.map((item) => item.requestId === requestId ? response.data : item))
+      setNotice(`Đã hủy yêu cầu mượn #${requestId}.`)
+    } catch (requestError) {
+      setError(requestError?.response?.data?.message || 'Không thể hủy yêu cầu mượn.')
     } finally {
       setBusyLoanId(null)
     }
@@ -125,9 +152,7 @@ function LoanHistory() {
             <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">Khoản mượn của tôi</h1>
             <p className="mt-2 text-[14px] text-slate-600">Theo dõi sách đang mượn, hạn trả và lịch sử giao dịch của bạn.</p>
           </div>
-          <button onClick={loadLoans} disabled={loading || !memberId} className="inline-flex h-10 w-fit items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Làm mới
-          </button>
+          <div className="flex gap-2"><Link to="/loans/request" className="inline-flex h-10 items-center rounded-xl bg-slate-950 px-4 text-[13px] font-semibold text-white">Tạo yêu cầu mượn</Link><button onClick={loadLoans} disabled={loading || !memberId} className="inline-flex h-10 w-fit items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Làm mới</button></div>
         </div>
 
         {!memberId && !loading && <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-[14px] text-amber-800">Hồ sơ của bạn chưa có mã thành viên nên chưa thể tra cứu khoản mượn.</div>}
@@ -142,13 +167,25 @@ function LoanHistory() {
         </section>
 
         <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-5 py-4"><h2 className="font-serif text-xl font-semibold">Yêu cầu mượn sách</h2><p className="mt-1 text-sm text-slate-500">Theo dõi các yêu cầu đang chờ thủ thư hoặc quản trị viên duyệt.</p></div>
+          <div className="divide-y divide-slate-100">
+            {borrowRequests.length === 0 ? <p className="px-5 py-8 text-center text-sm text-slate-500">Bạn chưa gửi yêu cầu mượn nào.</p> : borrowRequests.map((request) => (
+              <div key={request.requestId} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div><p className="text-sm font-semibold">Sách #{request.bookId} · Yêu cầu #{request.requestId}</p><p className="mt-1 text-xs text-slate-500">{new Date(request.requestedAt).toLocaleString('vi-VN')} · {request.bookType}</p>{request.rejectionReason && <p className="mt-1 text-xs text-red-600">Lý do: {request.rejectionReason}</p>}</div>
+                <div className="flex items-center gap-3"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{REQUEST_STATUS_LABEL[request.status] || request.status}</span>{request.status === 'PENDING' && <button onClick={() => handleCancelRequest(request.requestId)} disabled={busyLoanId === `request-${request.requestId}`} className="text-xs font-semibold text-red-600">Hủy yêu cầu</button>}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full max-w-sm">
               <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm theo mã phiếu hoặc mã sách..." className="h-10 w-full rounded-xl border border-slate-300 pl-10 pr-4 text-[13px] outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200" />
             </div>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-slate-200">
-              <option value="ALL">Tất cả trạng thái</option><option value="BORROWED">Đang mượn</option><option value="OVERDUE">Quá hạn</option><option value="RETURNED">Đã trả</option>
+              <option value="ALL">Tất cả trạng thái</option><option value="BORROWED">Đang mượn</option><option value="OVERDUE">Quá hạn</option><option value="RETURNED">Đã trả</option><option value="LOST">Đã mất</option>
             </select>
           </div>
 

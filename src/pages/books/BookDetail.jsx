@@ -10,12 +10,15 @@ import {
   MapPin,
   Star,
 } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getBookById, getBookCopiesByBookId, getBooks, getDigitalResources } from '@/api/bookApi'
 import BookCoverImage from '@/components/books/BookCoverImage'
 import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
 import { resolveBackendFileUrl, resolveBackendFileUrls } from '@/utils/fileUrl'
+import useAuthStore from '@/store/authSlice'
+
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
 
 const fallbackBook = {
   bookId: 'demo-1',
@@ -170,11 +173,21 @@ function RelatedCover({ book, index }) {
 
 function BookDetail() {
   const { bookId } = useParams()
-  const [book, setBook] = useState({})
+  const navigate = useNavigate()
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const [book, setBook] = useState(fallbackBook)
   const [relatedBooks, setRelatedBooks] = useState(fallbackRelatedBooks)
   const [bookCopies, setBookCopies] = useState([])
   const [digitalResourceUrl, setDigitalResourceUrl] = useState(null)
   const [activeTab, setActiveTab] = useState('description')
+  function requestBorrow() {
+    const requestPath = `/loans/request?bookId=${book.bookId || bookId}`
+    if (!accessToken) {
+      navigate('/login', { state: { from: requestPath } })
+      return
+    }
+    navigate(requestPath)
+  }
 
   useEffect(() => {
     let ignore = false
@@ -360,9 +373,9 @@ function BookDetail() {
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <button className="inline-flex h-14 items-center justify-center gap-3 rounded bg-slate-950 px-6 text-sm font-bold text-white transition hover:bg-slate-800">
+                <button onClick={requestBorrow} disabled={availableCopies <= 0} className="inline-flex h-16 items-center justify-center gap-3 rounded bg-slate-950 px-8 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
                   <BookOpen size={22} />
-                  Đăng ký mượn sách
+                  Tạo yêu cầu mượn
                 </button>
                 {digitalResourceUrl ? (
                   <a

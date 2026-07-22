@@ -10,14 +10,13 @@ import {
   Eye,
   Filter,
   Loader2,
-  Plus,
   RefreshCw,
   RotateCcw,
   Search,
   X,
 } from 'lucide-react'
-import { useLocation } from 'react-router-dom'
-import { borrowBook, getLoans, renewLoan, returnBook } from '@/api/loanApi'
+import { Link, useLocation } from 'react-router-dom'
+import { getLoans, renewLoan, returnBook } from '@/api/loanApi'
 import LibrarianLayout from '@/pages/books/librarian/LibrarianLayout'
 
 const PAGE_SIZE = 20
@@ -26,6 +25,7 @@ const STATUS_META = {
   BORROWED: { label: 'Đang mượn', classes: 'bg-blue-50 text-blue-700 ring-blue-600/10' },
   OVERDUE: { label: 'Quá hạn', classes: 'bg-red-50 text-red-700 ring-red-600/10' },
   RETURNED: { label: 'Đã trả', classes: 'bg-emerald-50 text-emerald-700 ring-emerald-600/10' },
+  LOST: { label: 'Đã mất', classes: 'bg-amber-50 text-amber-700 ring-amber-600/10' },
 }
 
 function formatDate(value, includeTime = false) {
@@ -108,72 +108,6 @@ function Modal({ open, title, eyebrow, onClose, children }) {
   )
 }
 
-function BorrowModal({ open, onClose, onCreated }) {
-  const [form, setForm] = useState({ memberId: '', bookId: '', bookType: 'PHYSICAL' })
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-
-  async function handleSubmit(event) {
-    event.preventDefault()
-    if (!form.memberId.trim() || !form.bookId) {
-      setError('Vui lòng nhập mã thành viên và mã sách.')
-      return
-    }
-    setSubmitting(true)
-    setError('')
-    try {
-      const response = await borrowBook({
-        memberId: form.memberId.trim(),
-        bookId: Number(form.bookId),
-        bookType: form.bookType,
-        idempotencyKey: createRequestKey('web-borrow'),
-      })
-      onCreated(response.data)
-      setForm({ memberId: '', bookId: '', bookType: 'PHYSICAL' })
-      onClose()
-    } catch (requestError) {
-      setError(getErrorMessage(requestError, 'Không thể tạo phiếu mượn. Hãy kiểm tra điều kiện mượn và thử lại.'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} eyebrow="Loan service" title="Tạo phiếu mượn mới">
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <label className="block text-[13px] font-semibold text-slate-700">
-          Mã thành viên
-          <input value={form.memberId} onChange={(e) => setForm({ ...form, memberId: e.target.value })} placeholder="Ví dụ: SV001" className="mt-2 h-11 w-full rounded-xl border border-slate-300 px-3.5 font-normal outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200" autoFocus />
-        </label>
-        <label className="block text-[13px] font-semibold text-slate-700">
-          Mã sách
-          <input type="number" min="1" value={form.bookId} onChange={(e) => setForm({ ...form, bookId: e.target.value })} placeholder="Nhập bookId" className="mt-2 h-11 w-full rounded-xl border border-slate-300 px-3.5 font-normal outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200" />
-        </label>
-        <fieldset>
-          <legend className="text-[13px] font-semibold text-slate-700">Loại tài liệu</legend>
-          <div className="mt-2 grid grid-cols-2 gap-3">
-            {[['PHYSICAL', 'Sách vật lý'], ['DIGITAL', 'Sách số']].map(([value, label]) => (
-              <label key={value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-[13px] font-medium ${form.bookType === value ? 'border-slate-900 bg-slate-50 text-slate-950' : 'border-slate-200 text-slate-600'}`}>
-                <input type="radio" name="bookType" value={value} checked={form.bookType === value} onChange={(e) => setForm({ ...form, bookType: e.target.value })} />
-                {label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <p className="rounded-xl bg-amber-50 px-4 py-3 text-[12px] leading-5 text-amber-800">Hệ thống sẽ tự kiểm tra dư nợ, hạn mức mượn và bản sao khả dụng trước khi tạo phiếu.</p>
-        {error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">{error}</p>}
-        <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={onClose} disabled={submitting} className="h-10 rounded-xl border border-slate-300 px-5 text-[13px] font-semibold text-slate-700 hover:bg-slate-50">Hủy</button>
-          <button type="submit" disabled={submitting} className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-5 text-[13px] font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
-            {submitting ? <Loader2 size={15} className="animate-spin" /> : <BookCheck size={15} />}
-            {submitting ? 'Đang tạo...' : 'Xác nhận mượn'}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
 function LoanDetailModal({ loan, onClose }) {
   if (!loan) return null
   const rows = [
@@ -217,7 +151,6 @@ function LoanDash() {
   const [query, setQuery] = useState('')
   const initialStatus = location.pathname.endsWith('/history') ? 'ALL' : location.pathname.endsWith('/returns') ? 'BORROWED' : 'ALL'
   const [statusFilter, setStatusFilter] = useState(initialStatus)
-  const [borrowOpen, setBorrowOpen] = useState(false)
   const [selectedLoan, setSelectedLoan] = useState(null)
   const [busyLoanId, setBusyLoanId] = useState(null)
 
@@ -286,7 +219,7 @@ function LoanDash() {
     if (!window.confirm(`Gia hạn thêm 14 ngày cho phiếu #${loan.loanId}?`)) return
     setBusyLoanId(loan.loanId)
     try {
-      const response = await renewLoan(loan.loanId, 'LIBRARIAN_WEB')
+      const response = await renewLoan(loan.loanId)
       updateLoan(response.data)
       setNotice(`Đã gia hạn phiếu #${loan.loanId} thành công.`)
     } catch (requestError) {
@@ -297,9 +230,9 @@ function LoanDash() {
   }
 
   const action = (
-    <button onClick={() => setBorrowOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-2xl bg-slate-950 px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-slate-800">
-      <Plus size={16} /> Tạo phiếu mượn
-    </button>
+    <Link to="/librarian/borrow-requests" className="inline-flex h-10 items-center gap-2 rounded-2xl bg-slate-950 px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-slate-800">
+      <BookCheck size={16} /> Duyệt yêu cầu mượn
+    </Link>
   )
 
   const activeNav = location.pathname.endsWith('/history')
@@ -309,7 +242,7 @@ function LoanDash() {
       : 'loans'
 
   return (
-    <LibrarianLayout active={activeNav} title="Quản lý mượn trả" description="Tạo phiếu mượn, theo dõi hạn trả và xử lý trả hoặc gia hạn sách." action={action}>
+    <LibrarianLayout active={activeNav} title="Quản lý mượn trả" description="Theo dõi các Loan đã được duyệt và xử lý trả hoặc gia hạn sách." action={action}>
       {notice && <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-700"><Check size={16} />{notice}</div>}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard icon={BookOpen} label="Tổng phiếu" value={totalElements} />
@@ -332,6 +265,7 @@ function LoanDash() {
                 <option value="BORROWED">Đang mượn</option>
                 <option value="OVERDUE">Quá hạn</option>
                 <option value="RETURNED">Đã trả</option>
+                <option value="LOST">Đã mất</option>
               </select>
             </div>
             <button onClick={loadLoans} disabled={loading} className="grid h-10 w-10 place-items-center rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50" aria-label="Tải lại"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} /></button>
@@ -383,7 +317,6 @@ function LoanDash() {
         </div>
       </section>
 
-      <BorrowModal open={borrowOpen} onClose={() => setBorrowOpen(false)} onCreated={(loan) => { setLoans((current) => [loan, ...current]); setTotalElements((value) => value + 1); setNotice(`Đã tạo phiếu mượn #${loan.loanId}.`) }} />
       <LoanDetailModal loan={selectedLoan} onClose={() => setSelectedLoan(null)} />
     </LibrarianLayout>
   )

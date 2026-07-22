@@ -25,6 +25,7 @@ const bookLinks = [
 ]
 
 const loanLinks = [
+  { key: 'borrow-requests', label: 'Yêu cầu mượn', to: '/librarian/borrow-requests' },
   { key: 'loans', label: 'Phiếu mượn', to: '/librarian/loans' },
   { key: 'loan-returns', label: 'Trả sách', to: '/librarian/loans/returns' },
   { key: 'loan-history', label: 'Lịch sử mượn', to: '/librarian/loans/history' },

@@ -1,4 +1,5 @@
 import { AlertTriangle, BookOpen, Filter, MoreVertical, Repeat2, UserPlus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import LibrarianLayout from './LibrarianLayout'
 
 const stats = [
@@ -131,7 +132,7 @@ function LibrarianDashboard() {
       active="dashboard"
       title="Dashboard"
       description="Tổng quan hoạt động mượn trả, thành viên và các đầu việc vận hành thư viện theo cùng phong cách với khu admin."
-      action={<button className="inline-flex h-10 w-fit items-center gap-2 rounded-2xl bg-slate-950 px-4 text-[13px] font-semibold text-white">+ Tạo phiếu mượn mới</button>}
+      action={<Link to="/librarian/borrow-requests" className="inline-flex h-10 w-fit items-center gap-2 rounded-2xl bg-slate-950 px-4 text-[13px] font-semibold text-white">Duyệt yêu cầu mượn</Link>}
     >
       <section className="grid gap-4 xl:grid-cols-4">
         {stats.map((stat) => (
