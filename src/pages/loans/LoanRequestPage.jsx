@@ -5,6 +5,7 @@ import { getBookById, getBooks, searchBooks } from '@/api/bookApi'
 import { createBorrowRequest, getMyBorrowRequests } from '@/api/loanApi'
 import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
+import { createBookNameMap } from '@/utils/book'
 
 const PAGE_SIZE = 12
 
@@ -21,6 +22,7 @@ function LoanRequestPage() {
   const initialBookId = searchParams.get('bookId')
   const [books, setBooks] = useState([])
   const [requests, setRequests] = useState([])
+  const [bookNames, setBookNames] = useState(() => new Map())
   const [selectedBook, setSelectedBook] = useState(null)
   const [bookType, setBookType] = useState('PHYSICAL')
   const [keyword, setKeyword] = useState('')
@@ -39,13 +41,15 @@ function LoanRequestPage() {
       const bookRequest = submittedKeyword
         ? searchBooks({ keyword: submittedKeyword, page, size: PAGE_SIZE })
         : getBooks({ page, size: PAGE_SIZE })
-      const [bookResponse, requestResponse] = await Promise.all([
+      const [bookResponse, requestResponse, allBooksResponse] = await Promise.all([
         bookRequest,
         getMyBorrowRequests({ size: 50 }),
+        getBooks({ page: 0, size: 500, sort: 'title,asc' }),
       ])
       setBooks(bookResponse.data?.content || [])
       setTotalPages(Math.max(bookResponse.data?.totalPages || 1, 1))
       setRequests(requestResponse.data?.content || [])
+      setBookNames(createBookNameMap(allBooksResponse.data))
     } catch (requestError) {
       setError(messageOf(requestError, 'Không thể tải danh mục sách hoặc yêu cầu hiện tại.'))
     } finally {
@@ -130,7 +134,7 @@ function LoanRequestPage() {
           </aside>
         </div>
 
-        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-serif text-xl font-semibold">Yêu cầu gần đây</h2><div className="mt-4 divide-y divide-slate-100">{requests.slice(0, 5).map((request) => <div key={request.requestId} className="flex items-center justify-between gap-4 py-3 text-sm"><span>Sách #{request.bookId} · Loan #{request.requestId}</span><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{statusLabel(request.status)}</span></div>)}{requests.length === 0 && <p className="py-4 text-sm text-slate-500">Bạn chưa có yêu cầu nào.</p>}</div></section>
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-serif text-xl font-semibold">Yêu cầu gần đây</h2><div className="mt-4 divide-y divide-slate-100">{requests.slice(0, 5).map((request) => <div key={request.requestId} className="flex items-center justify-between gap-4 py-3 text-sm"><span>{bookNames.get(String(request.bookId)) || 'Chưa có tên sách'} · Loan #{request.requestId}</span><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{statusLabel(request.status)}</span></div>)}{requests.length === 0 && <p className="py-4 text-sm text-slate-500">Bạn chưa có yêu cầu nào.</p>}</div></section>
       </main>
       <Footer />
     </div>

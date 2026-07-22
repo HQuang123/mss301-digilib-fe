@@ -12,9 +12,11 @@ import {
   Search,
 } from 'lucide-react'
 import { getLoansByMember, renewLoan } from '@/api/loanApi'
+import { getBooks } from '@/api/bookApi'
 import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
 import useAuthStore from '@/store/authSlice'
+import { createBookNameMap } from '@/utils/book'
 import { Link } from 'react-router-dom'
 
 const STATUS_META = {
@@ -50,6 +52,7 @@ function SummaryCard({ icon: Icon, label, value, classes }) {
 function LoanHistory() {
   const user = useAuthStore((state) => state.user)
   const [loans, setLoans] = useState([])
+  const [bookNames, setBookNames] = useState(() => new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -62,8 +65,12 @@ function LoanHistory() {
     setLoading(true)
     setError('')
     try {
-      const loanResponse = memberId ? await getLoansByMember() : { data: [] }
+      const [loanResponse, booksResponse] = await Promise.all([
+        memberId ? getLoansByMember() : Promise.resolve({ data: [] }),
+        getBooks({ page: 0, size: 500, sort: 'title,asc' }).catch(() => null),
+      ])
       setLoans(Array.isArray(loanResponse.data) ? loanResponse.data : [])
+      if (booksResponse) setBookNames(createBookNameMap(booksResponse.data))
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Không thể tải lịch sử mượn sách. Vui lòng thử lại.')
     } finally {
@@ -86,11 +93,12 @@ function LoanHistory() {
     const normalized = query.trim().toLowerCase()
     return loans.filter((loan) => {
       const matchesStatus = statusFilter === 'ALL' || loan.status === statusFilter
-      const matchesQuery = !normalized || [loan.loanId, loan.bookId, loan.copyId]
+      const bookName = bookNames.get(String(loan.bookId)) || ''
+      const matchesQuery = !normalized || [loan.loanId, bookName, loan.copyId]
         .some((value) => String(value ?? '').toLowerCase().includes(normalized))
       return matchesStatus && matchesQuery
     })
-  }, [loans, query, statusFilter])
+  }, [bookNames, loans, query, statusFilter])
 
   const counts = useMemo(() => ({
     borrowed: loans.filter((loan) => loan.status === 'BORROWED').length,
@@ -141,7 +149,7 @@ function LoanHistory() {
           <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full max-w-sm">
               <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm theo mã phiếu hoặc mã sách..." className="h-10 w-full rounded-xl border border-slate-300 pl-10 pr-4 text-[13px] outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm theo mã phiếu hoặc tên sách..." className="h-10 w-full rounded-xl border border-slate-300 pl-10 pr-4 text-[13px] outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200" />
             </div>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-slate-200">
               <option value="ALL">Tất cả trạng thái</option><option value="BORROWED">Đang mượn</option><option value="OVERDUE">Quá hạn</option><option value="RETURNED">Đã trả</option><option value="LOST">Đã mất</option>
@@ -156,7 +164,7 @@ function LoanHistory() {
                   <tr><td colSpan="6" className="px-5 py-16 text-center"><BookOpen size={26} className="mx-auto text-slate-300" /><p className="mt-3 text-[14px] font-medium text-slate-500">Bạn chưa có khoản mượn phù hợp.</p></td></tr>
                 ) : filteredLoans.map((loan) => (
                   <tr key={loan.loanId} className="hover:bg-slate-50/70">
-                    <td className="px-5 py-4"><p className="text-[13px] font-semibold text-slate-950">Sách #{loan.bookId}</p><p className="mt-1 text-[11px] text-slate-500">Phiếu #{loan.loanId} · {loan.bookType === 'DIGITAL' ? 'Sách số' : `Bản sao #${loan.copyId || '—'}`}</p></td>
+                    <td className="px-5 py-4"><p className="text-[13px] font-semibold text-slate-950">{bookNames.get(String(loan.bookId)) || 'Chưa có tên sách'}</p><p className="mt-1 text-[11px] text-slate-500">Phiếu #{loan.loanId} · {loan.bookType === 'DIGITAL' ? 'Sách số' : `Bản sao #${loan.copyId || '—'}`}</p></td>
                     <td className="px-5 py-4 text-[13px] text-slate-600">{formatDate(loan.borrowedAt)}</td>
                     <td className={`px-5 py-4 text-[13px] font-medium ${loan.status === 'OVERDUE' ? 'text-red-700' : 'text-slate-700'}`}><span className="inline-flex items-center gap-1.5"><CalendarClock size={14} />{formatDate(loan.dueDate)}</span></td>
                     <td className="px-5 py-4 text-[13px] text-slate-600">{formatDate(loan.returnedAt)}</td>

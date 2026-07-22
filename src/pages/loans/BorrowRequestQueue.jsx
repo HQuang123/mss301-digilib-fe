@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, Loader2, RefreshCw, X } from 'lucide-react'
 import { approveBorrowRequest, getBorrowRequests, rejectBorrowRequest } from '@/api/loanApi'
 import { getAllMembers } from '@/api/memberApi'
+import { getBooks } from '@/api/bookApi'
 import LibrarianLayout from '@/pages/books/librarian/LibrarianLayout'
 import AdminLayout from '@/components/layout/AdminLayout'
 import useAuthStore from '@/store/authSlice'
+import { createBookNameMap } from '@/utils/book'
 import { createMemberNameMap } from '@/utils/member'
 
 function messageOf(error, fallback) {
@@ -16,6 +18,7 @@ function BorrowRequestQueue() {
   const ReviewLayout = roles.includes('admin') ? AdminLayout : LibrarianLayout
   const [requests, setRequests] = useState([])
   const [memberNames, setMemberNames] = useState(() => new Map())
+  const [bookNames, setBookNames] = useState(() => new Map())
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
@@ -26,12 +29,14 @@ function BorrowRequestQueue() {
     setLoading(true)
     setError('')
     try {
-      const [response, membersResponse] = await Promise.all([
+      const [response, membersResponse, booksResponse] = await Promise.all([
         getBorrowRequests({ status: statusFilter, size: 100 }),
         getAllMembers().catch(() => null),
+        getBooks({ page: 0, size: 500, sort: 'title,asc' }).catch(() => null),
       ])
       setRequests(response.data?.content || [])
       if (membersResponse) setMemberNames(createMemberNameMap(membersResponse.data))
+      if (booksResponse) setBookNames(createBookNameMap(booksResponse.data))
     } catch (requestError) {
       setError(messageOf(requestError, 'Không thể tải danh sách yêu cầu mượn.'))
     } finally {
@@ -47,7 +52,8 @@ function BorrowRequestQueue() {
 
   async function approve(request) {
     const memberName = memberNames.get(String(request.memberId)) || 'chưa có tên'
-    if (!window.confirm(`Duyệt yêu cầu mượn sách #${request.bookId} của ${memberName}?`)) return
+    const bookName = bookNames.get(String(request.bookId)) || 'sách chưa có tên'
+    if (!window.confirm(`Duyệt yêu cầu mượn "${bookName}" của ${memberName}?`)) return
     setBusyId(request.requestId)
     setError('')
     try {
@@ -98,7 +104,7 @@ function BorrowRequestQueue() {
               : requests.map((request) => <tr key={request.requestId}>
                 <td className="px-5 py-4 font-semibold">#{request.requestId}</td>
                 <td className="px-5 py-4 text-sm font-medium">{memberNames.get(String(request.memberId)) || 'Chưa có tên'}</td>
-                <td className="px-5 py-4 text-sm font-semibold">#{request.bookId}</td>
+                <td className="px-5 py-4 text-sm font-semibold">{bookNames.get(String(request.bookId)) || 'Chưa có tên sách'}</td>
                 <td className="px-5 py-4 text-sm">{request.bookType}</td>
                 <td className="px-5 py-4"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{request.status}</span></td>
                 <td className="px-5 py-4 text-sm">{new Date(request.requestedAt).toLocaleString('vi-VN')}</td>

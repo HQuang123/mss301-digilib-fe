@@ -18,7 +18,9 @@ import {
 import { Link, useLocation } from 'react-router-dom'
 import { getLoans, renewLoan, returnBook } from '@/api/loanApi'
 import { getAllMembers } from '@/api/memberApi'
+import { getBooks } from '@/api/bookApi'
 import LibrarianLayout from '@/pages/books/librarian/LibrarianLayout'
+import { createBookNameMap } from '@/utils/book'
 import { createMemberNameMap } from '@/utils/member'
 
 const PAGE_SIZE = 20
@@ -134,12 +136,12 @@ function Modal({ open, title, eyebrow, onClose, children }) {
   )
 }
 
-function LoanDetailModal({ loan, memberName, onClose }) {
+function LoanDetailModal({ loan, memberName, bookName, onClose }) {
   if (!loan) return null
   const rows = [
     ['Mã phiếu', `#${loan.loanId}`],
     ['Thành viên', memberName],
-    ['Mã sách', loan.bookId],
+    ['Sách', bookName],
     ['Mã bản sao', loan.copyId || 'Không áp dụng'],
     ['Loại tài liệu', loan.bookType === 'DIGITAL' ? 'Sách số' : 'Sách vật lý'],
     ['Ngày mượn', formatDate(loan.borrowedAt, true)],
@@ -175,6 +177,7 @@ function LoanDash() {
   const view = VIEW_CONFIG[viewMode]
   const [loans, setLoans] = useState([])
   const [memberNames, setMemberNames] = useState(() => new Map())
+  const [bookNames, setBookNames] = useState(() => new Map())
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
@@ -191,13 +194,15 @@ function LoanDash() {
     setLoading(true)
     setError('')
     try {
-      const [response, membersResponse] = await Promise.all([
+      const [response, membersResponse, booksResponse] = await Promise.all([
         getLoans({ page, size: PAGE_SIZE }),
         getAllMembers().catch(() => null),
+        getBooks({ page: 0, size: 500, sort: 'title,asc' }).catch(() => null),
       ])
       const data = response.data || {}
       setLoans(data.content || [])
       if (membersResponse) setMemberNames(createMemberNameMap(membersResponse.data))
+      if (booksResponse) setBookNames(createBookNameMap(booksResponse.data))
       setTotalPages(Math.max(data.totalPages || 1, 1))
       setTotalElements(data.totalElements || 0)
     } catch (requestError) {
@@ -224,11 +229,12 @@ function LoanDash() {
       const matchesView = view.statuses.includes(loan.status)
       const matchesStatus = effectiveStatusFilter === 'ALL' || loan.status === effectiveStatusFilter
       const memberName = memberNames.get(String(loan.memberId)) || ''
-      const matchesQuery = !normalized || [loan.loanId, memberName, loan.bookId, loan.copyId]
+      const bookName = bookNames.get(String(loan.bookId)) || ''
+      const matchesQuery = !normalized || [loan.loanId, memberName, bookName, loan.copyId]
         .some((value) => String(value ?? '').toLowerCase().includes(normalized))
       return matchesView && matchesStatus && matchesQuery
     })
-  }, [effectiveStatusFilter, loans, memberNames, query, view])
+  }, [bookNames, effectiveStatusFilter, loans, memberNames, query, view])
 
   const metrics = useMemo(() => ({
     active: loans.filter((loan) => loan.status === 'BORROWED').length,
@@ -326,7 +332,7 @@ function LoanDash() {
                   <tr key={loan.loanId} className="hover:bg-slate-50/70">
                     <td className="px-5 py-4 text-[13px] font-semibold text-slate-950">#{loan.loanId}</td>
                     <td className="px-5 py-4 text-[13px] font-medium text-slate-700">{memberNames.get(String(loan.memberId)) || 'Chưa có tên'}</td>
-                    <td className="px-5 py-4"><p className="text-[13px] font-semibold text-slate-800">Sách #{loan.bookId}</p><p className="mt-1 text-[11px] text-slate-500">{loan.copyId ? `Bản sao #${loan.copyId}` : 'Tài liệu số'}</p></td>
+                    <td className="px-5 py-4"><p className="text-[13px] font-semibold text-slate-800">{bookNames.get(String(loan.bookId)) || 'Chưa có tên sách'}</p><p className="mt-1 text-[11px] text-slate-500">{loan.copyId ? `Bản sao #${loan.copyId}` : 'Tài liệu số'}</p></td>
                     <td className="px-5 py-4 text-[13px] text-slate-600">{formatDate(loan.borrowedAt)}</td>
                     <td className={`px-5 py-4 text-[13px] font-medium ${loan.status === 'OVERDUE' ? 'text-red-700' : 'text-slate-700'}`}>{formatDate(loan.dueDate)}</td>
                     <td className="px-5 py-4"><StatusBadge status={loan.status} /></td>
@@ -350,7 +356,7 @@ function LoanDash() {
         </div>
       </section>
 
-      <LoanDetailModal loan={selectedLoan} memberName={memberNames.get(String(selectedLoan?.memberId)) || 'Chưa có tên'} onClose={() => setSelectedLoan(null)} />
+      <LoanDetailModal loan={selectedLoan} memberName={memberNames.get(String(selectedLoan?.memberId)) || 'Chưa có tên'} bookName={bookNames.get(String(selectedLoan?.bookId)) || 'Chưa có tên sách'} onClose={() => setSelectedLoan(null)} />
     </LibrarianLayout>
   )
 }
